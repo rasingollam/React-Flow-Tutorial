@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   addEdge,
@@ -65,6 +65,7 @@ function DesignWorkflows() {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState(null); // State for selected edge
   const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false);
   const [widthInput, setWidthInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
@@ -72,23 +73,20 @@ function DesignWorkflows() {
   const reactFlowWrapper = useRef(null);
 
 
-  // Effect to update UI state based on the currently selected node in the nodes array
+  // Effect to update UI state based on the currently selected elements
   useEffect(() => {
-    // Find the node that has selected = true
+    // Check for selected node
     const currentlySelectedNode = nodes.find(node => node.selected);
     console.log("Effect running. Found selected node:", currentlySelectedNode?.id);
 
     if (currentlySelectedNode) {
-      // Update the selectedNodeId state
       setSelectedNodeId(currentlySelectedNode.id);
+      setSelectedEdgeId(null); // Deselect edge if node is selected
       console.log("Selected Node Object:", currentlySelectedNode);
-
-      // Update rename input
       const currentLabel = currentlySelectedNode.data?.label || '';
       console.log("Setting rename input to:", currentLabel);
       setRenameInput(currentLabel);
 
-      // Check if it's our custom group type (or potentially default 'group' if needed)
       if (currentlySelectedNode.type === 'group') {
         setSelectedNodeIsGroup(true);
         setWidthInput(currentlySelectedNode.style?.width || '');
@@ -99,16 +97,31 @@ function DesignWorkflows() {
         setHeightInput('');
       }
     } else {
-      console.log("No node selected in nodes array, clearing inputs.");
-      // Clear all inputs and selected ID if no node is selected
-      setSelectedNodeId(null); // Clear selected ID state
-      setSelectedNodeIsGroup(false);
-      setWidthInput('');
-      setHeightInput('');
-      setRenameInput('');
+      // If no node selected, check for selected edge
+      const currentlySelectedEdge = edges.find(edge => edge.selected);
+      console.log("Effect running. Found selected edge:", currentlySelectedEdge?.id);
+
+      if (currentlySelectedEdge) {
+        setSelectedEdgeId(currentlySelectedEdge.id);
+        setSelectedNodeId(null); // Deselect node if edge is selected
+        // Clear node-specific inputs
+        setSelectedNodeIsGroup(false);
+        setWidthInput('');
+        setHeightInput('');
+        setRenameInput('');
+      } else {
+        // No node or edge selected
+        console.log("No node or edge selected, clearing inputs.");
+        setSelectedNodeId(null);
+        setSelectedEdgeId(null);
+        setSelectedNodeIsGroup(false);
+        setWidthInput('');
+        setHeightInput('');
+        setRenameInput('');
+      }
     }
-  // Depend directly on the nodes array. When it changes (e.g., selection updates), this effect runs.
-  }, [nodes]);
+  // Depend on both nodes and edges arrays for selection changes
+  }, [nodes, edges]);
 
 
   // Simplified onNodesChange - let applyNodeChanges handle selection flags
@@ -117,11 +130,15 @@ function DesignWorkflows() {
       console.log("onNodesChange received changes:", changes);
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
-    [setNodes] // No longer depends on nodes or selectedNodeId here
+    [setNodes]
   );
 
+  // onEdgesChange already handles selection updates via applyEdgeChanges
   const onEdgesChange = useCallback(
-    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    (changes) => {
+        console.log("onEdgesChange received changes:", changes);
+        setEdges((eds) => applyEdgeChanges(changes, eds));
+    },
     [setEdges],
   );
   const onConnect = useCallback(
@@ -267,10 +284,23 @@ function DesignWorkflows() {
     );
 
     // Clear selection state manually since the node is gone
+    // useEffect will handle clearing inputs based on state change
     setSelectedNodeId(null);
-    // No need to clear other inputs here, useEffect will handle it when selectedNodeId becomes null
 
-  }, [selectedNodeId, setNodes, setEdges]); // Add dependencies
+  }, [selectedNodeId, setNodes, setEdges]);
+
+  // Function to handle deleting the selected edge
+  const handleDeleteEdge = useCallback(() => {
+    if (!selectedEdgeId) {
+      console.log("Delete failed: No edge selected.");
+      return;
+    }
+    console.log(`Attempting to delete edge ${selectedEdgeId}`);
+    setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdgeId));
+    // Clear selection state manually since the edge is gone
+    // useEffect will handle clearing inputs based on state change
+    setSelectedEdgeId(null);
+  }, [selectedEdgeId, setEdges]);
 
 
   // Function to handle saving the workflow with specific data structure
@@ -331,6 +361,22 @@ function DesignWorkflows() {
   }, [nodes, edges]); // Depend on nodes and edges
 
 
+  // Memoize the sorted nodes array for rendering order
+  const sortedNodes = useMemo(() => {
+    return [...nodes].sort((a, b) => {
+      // Render group nodes first
+      if (a.type === 'group' && b.type !== 'group') {
+        return -1; // a comes first
+      }
+      if (a.type !== 'group' && b.type === 'group') {
+        return 1; // b comes first
+      }
+      // Otherwise, maintain relative order (or sort by id/other property if needed)
+      return 0;
+    });
+  }, [nodes]); // Re-sort only when nodes array changes
+
+
   return (
     <div style={containerStyles} ref={reactFlowWrapper}>
       <div style={toolbarStyles}>
@@ -381,20 +427,31 @@ function DesignWorkflows() {
               </div>
             )}
 
-            {/* Delete Button */}
+            {/* Delete Node Button */}
             <button onClick={handleDeleteNode} style={deleteButtonStyle}>
               Delete Node
             </button>
           </div>
         )}
 
+        {/* Delete Edge Control - Visible when an edge is selected */}
+        {selectedEdgeId && (
+           <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+             <span>Selected Connection: {selectedEdgeId}</span>
+             <button onClick={handleDeleteEdge} style={deleteButtonStyle}>
+                Delete Connection
+             </button>
+           </div>
+        )}
+
+
         {/* Status Text */}
-        {!selectedNodeId && <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>Select a node to edit</span>}
+        {!selectedNodeId && !selectedEdgeId && <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>Select an element to edit</span>}
 
       </div>
       <div style={flowStyles}>
         <ReactFlow
-          nodes={nodes}
+          nodes={sortedNodes} // Use the sorted nodes array
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -404,6 +461,7 @@ function DesignWorkflows() {
           style={rfStyle}
           attributionPosition="bottom-right"
           selectNodesOnDrag={true}
+          edgesFocusable={true}
         >
           <Background />
           <Controls />

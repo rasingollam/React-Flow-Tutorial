@@ -6,27 +6,25 @@ const groupNodeStyle = {
   // backgroundColor is handled by the node's style prop
   border: '1px solid #ccc', // Default border, can be overridden by node style
   borderRadius: '4px',
-  position: 'relative', // Needed for absolute positioning of label
-  // Ensure children are positioned correctly
   width: '100%',
   height: '100%',
-  // Add some padding inside if needed, so children don't overlap border
-  // padding: '10px',
+  padding: '25px 10px 10px 10px',
+  boxSizing: 'border-box',
+  position: 'relative', // Needed for absolute positioning of label
 };
 
 const labelStyle = {
   position: 'absolute',
-  top: '-20px', // Position label above the node border
-  left: '5px',
+  top: '5px',
+  left: '10px',
+  right: '10px',
+  textAlign: 'center',
   color: '#555',
   fontSize: '12px',
   fontWeight: 'bold',
   // Prevent label from interfering with node selection/drag
   pointerEvents: 'none',
   userSelect: 'none',
-  backgroundColor: 'rgba(240, 240, 240, 0.7)', // Optional: Add background for readability
-  padding: '0 3px', // Optional: Add padding
-  borderRadius: '2px', // Optional: Add border radius
 };
 
 const CustomGroupNode = ({ data, style }) => {
@@ -39,7 +37,7 @@ const CustomGroupNode = ({ data, style }) => {
   return (
     <div style={combinedStyle}>
       <div style={labelStyle}>{data?.label || 'Group'}</div>
-      {/* React Flow automatically renders child nodes inside */}
+      {/* React Flow automatically renders child nodes and edges inside this container */}
     </div>
   );
 };
