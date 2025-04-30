@@ -32,8 +32,6 @@ function ControlPanel({
   selectedNode, // Pass the whole selected node object
   selectedEdgeId,
   selectedNodeConnections,
-  onAddParentNode,
-  onAddChildNode,
   onRenameNode,
   onResizeNode,
   onDeleteNode,
@@ -94,17 +92,6 @@ function ControlPanel({
 
   return (
     <div style={sidebarStyles}>
-      {/* Node Creation Section */}
-      <div style={sectionStyle}>
-        <strong>Create Nodes</strong>
-        <div>
-            <button onClick={onAddParentNode} style={buttonStyles}>Add Stage</button>
-            <button onClick={onAddChildNode} style={buttonStyles}>
-            {selectedNodeId ? 'Add Task to Selected' : 'Add Task'}
-            </button>
-        </div>
-      </div>
-
       {/* Node Edit Section */}
       {selectedNodeId && (
         <div style={sectionStyle}>

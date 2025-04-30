@@ -5,18 +5,21 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   Background,
-  Controls,
+  Controls, // Re-import Controls if it was removed
   useReactFlow,
-  ReactFlowProvider // Moved import to top
+  ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import CustomGroupNode from './CustomGroupNode';
+import HeaderBar from './HeaderBar'; // Import the new HeaderBar
 import ControlPanel from './ControlPanel';
 
-// Updated container style for row layout
-const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'row' };
-const flowContainerStyles = { flexGrow: 1, height: '100%' }; // Let flow component grow
+// Updated container style for column layout (Header + Main Content)
+const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'column' };
+// Style for the main content area (Flow + Sidebar)
+const mainContentStyles = { display: 'flex', flexDirection: 'row', flexGrow: 1, height: 'calc(100% - 41px)' }; // Adjust height based on header height
+const flowContainerStyles = { flexGrow: 1, height: '100%' };
 const rfStyle = {
   backgroundColor: '#f0f0f0',
 };
@@ -67,7 +70,10 @@ function DesignWorkflows() {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const reactFlowWrapper = useRef(null);
-  // const { fitView } = useReactFlow(); // Removed unused fitView
+  // REMOVED: useReactFlow hook usage here if only used for controls
+
+  // REMOVED: Lock State
+  // const [isLocked, setIsLocked] = useState(false);
 
   // Effect to update selected IDs based on nodes/edges state
   useEffect(() => {
@@ -217,44 +223,52 @@ function DesignWorkflows() {
 
   return (
     <div style={containerStyles}>
-      <div style={flowContainerStyles} ref={reactFlowWrapper}>
-        <ReactFlow
-          nodes={sortedNodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes} // Pass nodeTypes definition
-          fitView
-          style={rfStyle}
-          attributionPosition="bottom-right"
-          selectNodesOnDrag={true}
-          edgesFocusable={true}
-        >
-          <Background />
-          <Controls />
-        </ReactFlow>
-      </div>
-
-      {/* Render Control Panel Sidebar */}
-      <ControlPanel
-        selectedNode={selectedNode} // Pass the whole node object
-        selectedEdgeId={selectedEdgeId}
-        selectedNodeConnections={selectedNodeConnections}
+      {/* Render Header Bar */}
+      <HeaderBar
         onAddParentNode={addParentNode}
         onAddChildNode={addChildNode}
-        onRenameNode={handleRenameNode}
-        onResizeNode={handleParentResize}
-        onDeleteNode={handleDeleteNode}
-        onDeleteEdge={handleDeleteEdge}
-        onDeleteSpecificEdge={handleDeleteSpecificEdge}
+        selectedNodeId={selectedNodeId}
       />
 
-      {/* Save Button Container (adjust position if needed) */}
-      <div style={saveButtonContainerStyles}>
-        <button onClick={handleSave} style={saveButtonStyle}>
-          Save Workflow
-        </button>
+      {/* Main Content Area (Flow + Sidebar) */}
+      <div style={mainContentStyles}>
+          <div style={flowContainerStyles} ref={reactFlowWrapper}>
+            <ReactFlow
+              nodes={sortedNodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              nodeTypes={nodeTypes}
+              fitView
+              style={rfStyle}
+              attributionPosition="bottom-right"
+              selectNodesOnDrag={true}
+              edgesFocusable={true}
+            >
+              <Background />
+              <Controls /> {/* Re-added default controls */}
+            </ReactFlow>
+          </div>
+
+          {/* Render Control Panel Sidebar */}
+          <ControlPanel
+            selectedNode={selectedNode}
+            selectedEdgeId={selectedEdgeId}
+            selectedNodeConnections={selectedNodeConnections}
+            onRenameNode={handleRenameNode}
+            onResizeNode={handleParentResize}
+            onDeleteNode={handleDeleteNode}
+            onDeleteEdge={handleDeleteEdge}
+            onDeleteSpecificEdge={handleDeleteSpecificEdge}
+          />
+
+          {/* Save Button Container (might need position adjustment) */}
+          <div style={saveButtonContainerStyles}>
+            <button onClick={handleSave} style={saveButtonStyle}>
+              Save Workflow
+            </button>
+          </div>
       </div>
     </div>
   );
