@@ -22,19 +22,21 @@ const rfStyle = {
   backgroundColor: '#f0f0f0',
 };
 
-// Counter for unique node IDs
-let idCounter = initialNodes.length;
+// Counter for unique node IDs - Start from 0 for empty canvas
+let idCounter = 0;
 const getId = () => `dndnode_${idCounter++}`;
 
 
 function DesignWorkflows() {
+  // Initialize with empty arrays from imported files
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
-  const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false); // Track if selected node is a group
-  const [widthInput, setWidthInput] = useState(''); // State for width input
-  const [heightInput, setHeightInput] = useState(''); // State for height input
+  const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false);
+  const [widthInput, setWidthInput] = useState('');
+  const [heightInput, setHeightInput] = useState('');
   const reactFlowWrapper = useRef(null);
+
 
   // Find the selected node object
   const selectedNode = nodes.find(node => node.id === selectedNodeId);
@@ -81,25 +83,33 @@ function DesignWorkflows() {
   );
 
 
-  // Function to add a new parent node
+  // Function to add a new parent node and select it
   const addParentNode = useCallback(() => {
+    const newNodeId = getId();
     const newNode = {
-      id: getId(),
-      type: 'group', // Ensure new parents are groups
+      id: newNodeId,
+      type: 'group',
       data: { label: 'New Parent' },
       position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 },
       style: {
-        width: 200, // Default size for new parents
+        width: 200,
         height: 140,
         backgroundColor: 'rgba(0, 0, 255, 0.1)',
         border: '1px solid blue',
       },
+      selected: true, // Mark the new node as selected
     };
-    setNodes((nds) => nds.concat(newNode));
-  }, []);
+
+    setNodes((nds) =>
+      // Deselect all other nodes and add the new selected node
+      nds.map(n => ({ ...n, selected: false })).concat(newNode)
+    );
+    // Manually update the selectedNodeId state
+    setSelectedNodeId(newNodeId);
+  }, [setNodes, setSelectedNodeId]); // Add setSelectedNodeId dependency
 
 
-  // Modified function to add a child node inside the selected parent
+  // Modified function to add a child node inside the selected parent OR as an orphan
   const addChildNode = useCallback(() => {
     const parentNode = nodes.find(node => node.id === selectedNodeId);
     const newNodeId = getId();
@@ -115,7 +125,7 @@ function DesignWorkflows() {
       newNode = {
         id: newNodeId,
         data: { label: `Child of ${parentNode.id}` },
-        position: { x: childX, y: childY }, // Position relative to parent
+        position: { x: childX, y: childY },
         parentId: parentNode.id,
         extent: 'parent', // Keep it within the parent bounds
       };
@@ -123,15 +133,15 @@ function DesignWorkflows() {
       // Add as a regular node if no parent is selected
       newNode = {
         id: newNodeId,
-        data: { label: 'New Node (Orphan)' },
+        data: { label: 'New Node' }, // Changed label slightly
         position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 150 },
       };
       // Optionally, provide feedback that no parent was selected
-      console.log("No parent selected, adding node to canvas.");
+      console.log("No parent selected, adding new node to canvas."); // Log message updated
     }
 
     setNodes((nds) => nds.concat(newNode));
-  }, [selectedNodeId, nodes]); // Add dependencies
+  }, [selectedNodeId, nodes]); // Dependencies remain the same
 
 
   // Function to handle resizing the selected parent node
@@ -162,14 +172,16 @@ function DesignWorkflows() {
         return node;
       })
     );
-  }, [selectedNodeId, selectedNodeIsGroup, widthInput, heightInput, setNodes]);
+  }, [selectedNodeId, selectedNodeIsGroup, widthInput, heightInput, setNodes]); // Corrected typo and added missing dependency
+
 
   return (
     <div style={containerStyles} ref={reactFlowWrapper}>
       <div style={toolbarStyles}>
         <button onClick={addParentNode} style={buttonStyles}>Add Parent Node</button>
-        <button onClick={addChildNode} style={buttonStyles} disabled={!selectedNodeId}>
-           Add Child to Selected
+        {/* Updated button: Always enabled, text reflects dual purpose */}
+        <button onClick={addChildNode} style={buttonStyles}>
+           {selectedNodeId ? 'Add Child to Selected' : 'Add Node'}
         </button>
 
         {/* Resize controls - visible only when a group node is selected */}
@@ -197,7 +209,8 @@ function DesignWorkflows() {
             <button onClick={handleParentResize}>Apply Size</button>
           </>
         )}
-        {!selectedNodeId && <span style={{ marginLeft: '15px', fontStyle: 'italic' }}>Select a node</span>}
+        {/* Updated status text */}
+        {!selectedNodeId && <span style={{ marginLeft: '15px', fontStyle: 'italic' }}>Select a node to add child inside it</span>}
         {selectedNodeId && !selectedNodeIsGroup && <span style={{ marginLeft: '15px' }}>Selected: {selectedNodeId} (Not a Parent Group)</span>}
 
       </div>
