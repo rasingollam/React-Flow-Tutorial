@@ -6,520 +6,225 @@ import {
   applyNodeChanges,
   Background,
   Controls,
+  useReactFlow,
+  ReactFlowProvider // Moved import to top
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import CustomGroupNode from './CustomGroupNode';
+import ControlPanel from './ControlPanel';
 
-// Basic styling for the container and toolbar
-const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }; // Added position: relative
-const toolbarStyles = { padding: '10px', borderBottom: '1px solid #ccc', background: '#eee', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' };
-const buttonStyles = { marginRight: '10px' };
-const inputStyles = { width: '60px', marginLeft: '5px' };
-const renameInputStyles = { width: '150px', marginLeft: '5px' };
-const flowStyles = { flexGrow: 1 };
+// Updated container style for row layout
+const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'row' };
+const flowContainerStyles = { flexGrow: 1, height: '100%' }; // Let flow component grow
 const rfStyle = {
   backgroundColor: '#f0f0f0',
 };
-// Styles for the save button container and button
+// Styles for the save button container and button (can remain absolute or be moved)
 const saveButtonContainerStyles = {
   position: 'absolute',
-  right: '20px',
+  right: '320px', // Adjust position based on sidebar width
   bottom: '20px',
-  zIndex: 10, // Ensure it's above the ReactFlow component
+  zIndex: 10,
 };
 const saveButtonStyle = {
   padding: '10px 20px',
   fontSize: '16px',
   cursor: 'pointer',
-  backgroundColor: '#28a745', // Green color
+  backgroundColor: '#28a745',
   color: 'white',
   border: 'none',
   borderRadius: '5px',
   boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
 };
-const deleteButtonStyle = {
-    backgroundColor: '#dc3545', // Red color
-    color: 'white',
-    padding: '5px 10px',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    marginLeft: '10px',
-};
-const connectionListStyle = { marginTop: '10px', borderTop: '1px solid #ddd', paddingTop: '10px' };
-const connectionItemStyle = { marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const connectionTextStyle = { fontSize: '12px', marginRight: '10px' };
 
-
-// Counters for unique node/edge IDs
+// --- ID Generation (moved outside component) ---
 let stageIdCounter = 0;
 let taskIdCounter = 0;
-let edgeIdCounter = 0; // Counter for custom edge IDs
+let edgeIdCounter = 0;
 
-// Modified getId function
 const getId = (type) => {
   switch (type) {
     case 'group':
       return `Stage_${stageIdCounter++}`;
     case 'task':
-    default: // Default to task prefix if type is missing or different
+    default:
       return `Task_${taskIdCounter++}`;
   }
 };
 
-// Function to get a unique edge ID
 const getEdgeId = () => `Connection_${edgeIdCounter++}`;
 
-
-// Define the custom node types
+// --- Node Types Definition (moved outside component) ---
 const nodeTypes = {
   group: CustomGroupNode,
 };
 
+
 function DesignWorkflows() {
-  // Initialize with empty arrays
-  const [nodes, setNodes] = useState([]); // Initialize with empty array
-  const [edges, setEdges] = useState([]); // Initialize with empty array
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
-  const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false);
-  const [widthInput, setWidthInput] = useState('');
-  const [heightInput, setHeightInput] = useState('');
-  const [renameInput, setRenameInput] = useState('');
   const reactFlowWrapper = useRef(null);
+  // const { fitView } = useReactFlow(); // Removed unused fitView
 
-
-  // Effect to update UI state based on the currently selected elements
+  // Effect to update selected IDs based on nodes/edges state
   useEffect(() => {
-    // Check for selected node
     const currentlySelectedNode = nodes.find(node => node.selected);
-    console.log("Effect running. Found selected node:", currentlySelectedNode?.id);
+    const currentlySelectedEdge = edges.find(edge => edge.selected);
 
     if (currentlySelectedNode) {
       setSelectedNodeId(currentlySelectedNode.id);
-      setSelectedEdgeId(null); // Deselect edge if node is selected
-      console.log("Selected Node Object:", currentlySelectedNode);
-      const currentLabel = currentlySelectedNode.data?.label || '';
-      console.log("Setting rename input to:", currentLabel);
-      setRenameInput(currentLabel);
-
-      if (currentlySelectedNode.type === 'group') {
-        setSelectedNodeIsGroup(true);
-        setWidthInput(currentlySelectedNode.style?.width || '');
-        setHeightInput(currentlySelectedNode.style?.height || '');
-      } else {
-        setSelectedNodeIsGroup(false);
-        setWidthInput('');
-        setHeightInput('');
-      }
+      setSelectedEdgeId(null);
+    } else if (currentlySelectedEdge) {
+      setSelectedEdgeId(currentlySelectedEdge.id);
+      setSelectedNodeId(null);
     } else {
-      // If no node selected, check for selected edge
-      const currentlySelectedEdge = edges.find(edge => edge.selected);
-      console.log("Effect running. Found selected edge:", currentlySelectedEdge?.id);
-
-      if (currentlySelectedEdge) {
-        setSelectedEdgeId(currentlySelectedEdge.id);
-        setSelectedNodeId(null); // Deselect node if edge is selected
-        // Clear node-specific inputs
-        setSelectedNodeIsGroup(false);
-        setWidthInput('');
-        setHeightInput('');
-        setRenameInput('');
-      } else {
-        // No node or edge selected
-        console.log("No node or edge selected, clearing inputs.");
-        setSelectedNodeId(null);
-        setSelectedEdgeId(null);
-        setSelectedNodeIsGroup(false);
-        setWidthInput('');
-        setHeightInput('');
-        setRenameInput('');
-      }
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
     }
-  // Depend on both nodes and edges arrays for selection changes
   }, [nodes, edges]);
 
-
-  // Simplified onNodesChange - let applyNodeChanges handle selection flags
+  // --- Core State Update Callbacks ---
   const onNodesChange = useCallback(
-    (changes) => {
-      console.log("onNodesChange received changes:", changes);
-      setNodes((nds) => applyNodeChanges(changes, nds));
-    },
+    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
     [setNodes]
   );
-
-  // onEdgesChange already handles selection updates via applyEdgeChanges
   const onEdgesChange = useCallback(
-    (changes) => {
-        console.log("onEdgesChange received changes:", changes);
-        setEdges((eds) => applyEdgeChanges(changes, eds));
-    },
+    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
     [setEdges],
   );
-
-  // Modified onConnect to use custom edge IDs
   const onConnect = useCallback(
     (connection) => {
-      const newEdge = {
-        ...connection,
-        id: getEdgeId(), // Generate custom edge ID
-      };
+      const newEdge = { ...connection, id: getEdgeId() };
       setEdges((eds) => addEdge(newEdge, eds));
     },
     [setEdges],
   );
 
-
-  // Function to add a new parent node using the custom type
+  // --- Node/Edge Creation Callbacks ---
   const addParentNode = useCallback(() => {
-    const newNodeId = getId('group'); // Use 'group' type for ID
-    const newNode = {
-      id: newNodeId,
-      type: 'group',
-      data: { label: 'New Stage' }, // Updated label
-      position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 },
-      style: {
-        width: 500,
-        height: 500,
-        backgroundColor: 'rgba(0, 0, 255, 0.1)',
-      },
-      selected: true,
-    };
-
-    setNodes((nds) =>
-      // Deselect all other nodes and add the new selected node
-      nds.map(n => ({ ...n, selected: false })).concat(newNode)
-    );
-    // No need to manually set selectedNodeId here, useEffect will handle it
+    // ... (keep existing logic using getId('group')) ...
+    const newNodeId = getId('group');
+    const newNode = { /* ... node data ... */ id: newNodeId, type: 'group', data: { label: 'New Stage' }, position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 }, style: { width: 500, height: 500, backgroundColor: 'rgba(0, 0, 255, 0.1)' }, selected: true };
+    setNodes((nds) => nds.map(n => ({ ...n, selected: false })).concat(newNode));
   }, [setNodes]);
 
-
-  // Modified function to add a child node inside the selected parent OR as an orphan
   const addChildNode = useCallback(() => {
-    const parentNode = nodes.find(node => node.id === selectedNodeId); // Use selectedNodeId state here
-    const newNodeId = getId('task'); // Use 'task' type for ID
+    // ... (keep existing logic using getId('task')) ...
+    const parentNode = nodes.find(node => node.id === selectedNodeId);
+    const newNodeId = getId('task');
     let newNode;
-
     if (parentNode) {
-      // Add as a child if a parent is selected
-      // Calculate position relative to parent (e.g., slightly offset)
-      // You might want more sophisticated logic to place it without overlap
-      const childX = 10 + Math.random() * 40;
-      const childY = 30 + Math.random() * 50;
-
-      newNode = {
-        id: newNodeId,
-        data: { label: `New Task` }, // Updated label
-        position: { x: childX, y: childY },
-        parentId: parentNode.id,
-        extent: 'parent', // Keep it within the parent bounds
-      };
+        const childX = 10 + Math.random() * 40;
+        const childY = 30 + Math.random() * 50;
+        newNode = { id: newNodeId, data: { label: `New Task` }, position: { x: childX, y: childY }, parentId: parentNode.id, extent: 'parent' };
     } else {
-      // Add as a regular node (still using 'task' prefix as requested)
-      newNode = {
-        id: newNodeId,
-        data: { label: 'New Task' }, // Updated label
-        position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 150 },
-      };
-      // Optionally, provide feedback that no parent was selected
-      console.log("No parent selected, adding new task node to canvas."); // Log message updated
+        newNode = { id: newNodeId, data: { label: 'New Task' }, position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 150 } };
     }
-
     setNodes((nds) => nds.concat(newNode));
   }, [selectedNodeId, nodes, setNodes]);
 
 
-  // Function to handle resizing the selected parent node
-  const handleParentResize = useCallback(() => {
-    if (!selectedNodeId || !selectedNodeIsGroup) return; // Only resize selected group nodes
-
-    const newWidth = parseInt(widthInput, 10);
-    const newHeight = parseInt(heightInput, 10);
-
-    if (isNaN(newWidth) || isNaN(newHeight) || newWidth <= 0 || newHeight <= 0) {
-      console.error("Invalid width or height value");
-      // Optionally reset inputs to current node dimensions or show an error message
-      return;
-    }
-
+  // --- Node/Edge Modification/Deletion Callbacks (passed to ControlPanel) ---
+  const handleRenameNode = useCallback((nodeId, newLabel) => {
     setNodes((nds) =>
       nds.map((node) => {
-        if (node.id === selectedNodeId) {
-          return {
-            ...node,
-            style: {
-              ...node.style,
-              width: newWidth,
-              height: newHeight,
-            },
-          };
+        if (node.id === nodeId) {
+          return { ...node, data: { ...node.data, label: newLabel } };
         }
         return node;
       })
     );
-  }, [selectedNodeId, selectedNodeIsGroup, widthInput, heightInput, setNodes]); // Corrected typo and added missing dependency
+  }, [setNodes]);
 
-  // Function to handle renaming the selected node
-  const handleRenameNode = useCallback(() => {
-    console.log(`Attempting to rename node ${selectedNodeId} to "${renameInput}"`);
-    if (!selectedNodeId) {
-        console.log("Rename failed: No node selected.");
-        return;
-    }
+  const handleParentResize = useCallback((nodeId, newWidthStr, newHeightStr) => {
+    const newWidth = parseInt(newWidthStr, 10);
+    const newHeight = parseInt(newHeightStr, 10);
+    if (isNaN(newWidth) || isNaN(newHeight) || newWidth <= 0 || newHeight <= 0) return;
 
     setNodes((nds) =>
       nds.map((node) => {
-        if (node.id === selectedNodeId) {
-          console.log("Found node to rename:", node);
-          // Create a new data object with the updated label
-          const updatedNode = {
-            ...node,
-            data: { ...node.data, label: renameInput },
-          };
-          console.log("Updated node data:", updatedNode);
-          return updatedNode;
+        if (node.id === nodeId && node.type === 'group') { // Ensure it's the correct node and type
+          return { ...node, style: { ...node.style, width: newWidth, height: newHeight } };
         }
         return node;
       })
     );
-  }, [selectedNodeId, renameInput, setNodes]); // Add dependencies
+  }, [setNodes]);
 
+  const handleDeleteNode = useCallback((nodeIdToDelete) => {
+    setNodes((nds) => nds.filter((node) => node.id !== nodeIdToDelete));
+    setEdges((eds) => eds.filter((edge) => edge.source !== nodeIdToDelete && edge.target !== nodeIdToDelete));
+    // Selection cleared by useEffect
+  }, [setNodes, setEdges]);
 
-  // Function to handle deleting the selected node
-  const handleDeleteNode = useCallback(() => {
-    if (!selectedNodeId) {
-      console.log("Delete failed: No node selected.");
-      return;
+  const handleDeleteEdge = useCallback((edgeIdToDelete) => {
+    setEdges((eds) => eds.filter((edge) => edge.id !== edgeIdToDelete));
+    // Selection cleared by useEffect
+  }, [setEdges]);
+
+  // handleDeleteSpecificEdge remains the same as it already accepts an ID
+  const handleDeleteSpecificEdge = useCallback((edgeIdToDelete) => {
+    setEdges((eds) => eds.filter((edge) => edge.id !== edgeIdToDelete));
+    if (selectedEdgeId === edgeIdToDelete) {
+        setSelectedEdgeId(null); // Manually clear if it was the selected one
     }
-
-    console.log(`Attempting to delete node ${selectedNodeId}`);
-
-    // Remove the selected node
-    setNodes((nds) => nds.filter((node) => node.id !== selectedNodeId));
-
-    // Remove edges connected to the selected node
-    setEdges((eds) =>
-      eds.filter(
-        (edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId
-      )
-    );
-
-    // Clear selection state manually since the node is gone
-    // useEffect will handle clearing inputs based on state change
-    setSelectedNodeId(null);
-
-  }, [selectedNodeId, setNodes, setEdges]);
-
-  // Function to handle deleting the selected edge (from direct selection)
-  const handleDeleteEdge = useCallback(() => {
-    if (!selectedEdgeId) return;
-    setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdgeId));
-    setSelectedEdgeId(null);
   }, [selectedEdgeId, setEdges]);
 
-  // Function to delete a specific edge by ID (called from node's connection list)
-  const handleDeleteSpecificEdge = useCallback((edgeIdToDelete) => {
-    console.log(`Attempting to delete specific edge ${edgeIdToDelete}`);
-    setEdges((eds) => eds.filter((edge) => edge.id !== edgeIdToDelete));
-    // If the currently selected edge is the one being deleted, clear selection
-    if (selectedEdgeId === edgeIdToDelete) {
-        setSelectedEdgeId(null);
-    }
-  }, [selectedEdgeId, setEdges]); // Added selectedEdgeId dependency
 
-
-  // Function to handle saving the workflow with specific data structure
+  // --- Save Callback ---
   const handleSave = useCallback(() => {
+    // ... (keep existing save logic) ...
     const parentNodesData = [];
     const childNodesData = [];
-
-    // Process nodes
     nodes.forEach(node => {
-      // Only nodes with type 'group' are considered parents in the saved structure
       if (node.type === 'group') {
-        parentNodesData.push({
-          id: node.id,
-          label: node.data?.label || '',
-        });
-      } else { // All other node types are considered children
-        // Find edges connected to this child node
+        parentNodesData.push({ id: node.id, label: node.data?.label || '' });
+      } else {
         const connectedEdges = edges.filter(edge => edge.source === node.id || edge.target === node.id);
-
-        // Initialize sources and targets arrays
-        const sources = [];
-        const targets = [];
-
-        // Populate sources and targets based on connected edges
-        connectedEdges.forEach(edge => {
-          if (edge.target === node.id) {
-            sources.push(edge.source);
-          }
-          if (edge.source === node.id) {
-            targets.push(edge.target);
-          }
-        });
-
-        childNodesData.push({
-          id: node.id,
-          label: node.data?.label || '',
-          // Set parentNode to the actual parentId, or null if it doesn't have one
-          parentNode: node.parentId || null,
-          connections: {
-             sources: sources,
-             targets: targets,
-          },
-        });
+        const sources = connectedEdges.filter(e => e.target === node.id).map(e => e.source);
+        const targets = connectedEdges.filter(e => e.source === node.id).map(e => e.target);
+        childNodesData.push({ id: node.id, label: node.data?.label || '', parentNode: node.parentId || null, connections: { sources, targets } });
       }
     });
-
-    // Prepare the final structured data
-    const structuredData = {
-      parentNodes: parentNodesData,
-      childNodes: childNodesData,
-    };
-
-    console.log("Saving Structured Workflow Data:");
-    console.log(JSON.stringify(structuredData, null, 2)); // Pretty print JSON
-    alert("Structured workflow data logged to console. Check the developer tools.");
-
-  }, [nodes, edges]); // Depend on nodes and edges
+    const structuredData = { parentNodes: parentNodesData, childNodes: childNodesData };
+    console.log("Saving Structured Workflow Data:", JSON.stringify(structuredData, null, 2));
+    alert("Structured workflow data logged to console.");
+  }, [nodes, edges]);
 
 
-  // Memoize the sorted nodes array for rendering order
+  // --- Memos for Derived Data (passed to ControlPanel) ---
   const sortedNodes = useMemo(() => {
+    // ... (keep existing sorting logic) ...
     return [...nodes].sort((a, b) => {
-      // Render group nodes first
-      if (a.type === 'group' && b.type !== 'group') {
-        return -1; // a comes first
-      }
-      if (a.type !== 'group' && b.type === 'group') {
-        return 1; // b comes first
-      }
-      // Otherwise, maintain relative order (or sort by id/other property if needed)
+      if (a.type === 'group' && b.type !== 'group') return -1;
+      if (a.type !== 'group' && b.type === 'group') return 1;
       return 0;
     });
-  }, [nodes]); // Re-sort only when nodes array changes
+  }, [nodes]);
 
+  const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
 
-  // Find connections for the selected node (if it's not a group)
   const selectedNodeConnections = useMemo(() => {
-    if (!selectedNodeId || selectedNodeIsGroup) {
+    if (!selectedNodeId || selectedNode?.type === 'group') { // Check selectedNode object type
       return [];
     }
     return edges.filter(edge => edge.source === selectedNodeId || edge.target === selectedNodeId);
-  }, [selectedNodeId, selectedNodeIsGroup, edges]);
+  }, [selectedNodeId, selectedNode, edges]); // Depend on selectedNode object
 
 
   return (
-    <div style={containerStyles} ref={reactFlowWrapper}>
-      <div style={toolbarStyles}>
-        {/* Node Creation Buttons */}
-        <button onClick={addParentNode} style={buttonStyles}>Add Parent Node</button>
-        <button onClick={addChildNode} style={buttonStyles}>
-           {selectedNodeId ? 'Add Child to Selected' : 'Add Node'}
-        </button>
-
-        {/* Edit Controls Container - Visible when any node is selected */}
-        {selectedNodeId && (
-          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}> {/* Changed layout to column */}
-            {/* Top Row: Rename, Resize, Delete Node */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {/* Rename Controls */}
-              <div>
-                <span>Rename Node ({selectedNodeId}):</span>
-                <input
-                  type="text"
-                  value={renameInput}
-                  onChange={(e) => setRenameInput(e.target.value)}
-                  style={renameInputStyles}
-                />
-                <button onClick={handleRenameNode} style={{ marginLeft: '5px' }}>Apply Name</button>
-              </div>
-
-              {/* Resize Controls - Visible only when a group node is selected */}
-              {selectedNodeIsGroup && (
-                <div>
-                  <span>Resize Parent:</span>
-                  <label> W:
-                    <input
-                      type="number"
-                      value={widthInput}
-                      onChange={(e) => setWidthInput(e.target.value)}
-                      style={inputStyles}
-                      min="10"
-                    />
-                  </label>
-                  <label> H:
-                    <input
-                      type="number"
-                      value={heightInput}
-                      onChange={(e) => setHeightInput(e.target.value)}
-                      style={inputStyles}
-                      min="10"
-                    />
-                  </label>
-                  <button onClick={handleParentResize} style={{ marginLeft: '5px' }}>Apply Size</button>
-                </div>
-              )}
-
-              {/* Delete Node Button */}
-              <button onClick={handleDeleteNode} style={deleteButtonStyle}>
-                Delete Node
-              </button>
-            </div>
-
-            {/* Connections List - Visible only when a non-group node is selected */}
-            {!selectedNodeIsGroup && selectedNodeConnections.length > 0 && (
-              <div style={connectionListStyle}>
-                <strong>Connections:</strong>
-                {selectedNodeConnections.map(edge => (
-                  <div key={edge.id} style={connectionItemStyle}>
-                    <span style={connectionTextStyle}>
-                      {edge.source === selectedNodeId ? `➡️ To: ${edge.target}` : `⬅️ From: ${edge.source}`}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteSpecificEdge(edge.id)}
-                      style={{ ...deleteButtonStyle, marginLeft: 'auto', padding: '2px 5px', fontSize: '10px' }} // Smaller delete button
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-             {!selectedNodeIsGroup && selectedNodeConnections.length === 0 && (
-                 <div style={connectionListStyle}>
-                    <span style={{fontSize: '12px', fontStyle: 'italic'}}>No connections</span>
-                 </div>
-             )}
-          </div>
-        )}
-
-        {/* Delete Edge Control - Visible when an edge is directly selected */}
-        {selectedEdgeId && (
-           <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-             <span>Selected Connection: {selectedEdgeId}</span>
-             <button onClick={handleDeleteEdge} style={deleteButtonStyle}>
-                Delete Connection
-             </button>
-           </div>
-        )}
-
-
-        {/* Status Text */}
-        {!selectedNodeId && !selectedEdgeId && <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>Select an element to edit</span>}
-
-      </div>
-      <div style={flowStyles}>
+    <div style={containerStyles}>
+      <div style={flowContainerStyles} ref={reactFlowWrapper}>
         <ReactFlow
-          nodes={sortedNodes} // Use the sorted nodes array
+          nodes={sortedNodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          nodeTypes={nodeTypes}
+          nodeTypes={nodeTypes} // Pass nodeTypes definition
           fitView
           style={rfStyle}
           attributionPosition="bottom-right"
@@ -531,7 +236,21 @@ function DesignWorkflows() {
         </ReactFlow>
       </div>
 
-      {/* Save Button Container */}
+      {/* Render Control Panel Sidebar */}
+      <ControlPanel
+        selectedNode={selectedNode} // Pass the whole node object
+        selectedEdgeId={selectedEdgeId}
+        selectedNodeConnections={selectedNodeConnections}
+        onAddParentNode={addParentNode}
+        onAddChildNode={addChildNode}
+        onRenameNode={handleRenameNode}
+        onResizeNode={handleParentResize}
+        onDeleteNode={handleDeleteNode}
+        onDeleteEdge={handleDeleteEdge}
+        onDeleteSpecificEdge={handleDeleteSpecificEdge}
+      />
+
+      {/* Save Button Container (adjust position if needed) */}
       <div style={saveButtonContainerStyles}>
         <button onClick={handleSave} style={saveButtonStyle}>
           Save Workflow
@@ -541,4 +260,15 @@ function DesignWorkflows() {
   );
 }
 
-export default DesignWorkflows;
+// Wrap DesignWorkflows with ReactFlowProvider
+// This is often done in App.js or index.js, but can be done here too.
+// For simplicity, assuming it's provided higher up or adding it here:
+function DesignWorkflowsWrapper() {
+  return (
+    <ReactFlowProvider>
+      <DesignWorkflows />
+    </ReactFlowProvider>
+  );
+}
+
+export default DesignWorkflowsWrapper; // Export the wrapped component
