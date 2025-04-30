@@ -339,12 +339,13 @@ function DesignWorkflows() {
 
     // Process nodes
     nodes.forEach(node => {
-      if (node.type === 'group' || !node.parentId) { // Identify parent/group nodes
+      // Only nodes with type 'group' are considered parents in the saved structure
+      if (node.type === 'group') {
         parentNodesData.push({
           id: node.id,
           label: node.data?.label || '',
         });
-      } else if (node.parentId) { // Identify child nodes
+      } else { // All other node types are considered children
         // Find edges connected to this child node
         const connectedEdges = edges.filter(edge => edge.source === node.id || edge.target === node.id);
 
@@ -355,11 +356,9 @@ function DesignWorkflows() {
         // Populate sources and targets based on connected edges
         connectedEdges.forEach(edge => {
           if (edge.target === node.id) {
-            // If this node is the target, the edge source is an incoming connection
             sources.push(edge.source);
           }
           if (edge.source === node.id) {
-            // If this node is the source, the edge target is an outgoing connection
             targets.push(edge.target);
           }
         });
@@ -367,8 +366,8 @@ function DesignWorkflows() {
         childNodesData.push({
           id: node.id,
           label: node.data?.label || '',
-          parentNode: node.parentId,
-          // Assign the new connections structure
+          // Set parentNode to the actual parentId, or null if it doesn't have one
+          parentNode: node.parentId || null,
           connections: {
              sources: sources,
              targets: targets,
