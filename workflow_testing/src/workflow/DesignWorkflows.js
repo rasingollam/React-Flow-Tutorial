@@ -68,8 +68,8 @@ function DesignWorkflows() {
   const [edges, setEdges] = useState([]);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(true); // State for panel visibility
   const reactFlowWrapper = useRef(null);
-  // REMOVED: useReactFlow hook usage here if only used for controls
 
   // Effect to update selected IDs based on nodes/edges state
   useEffect(() => {
@@ -217,6 +217,12 @@ function DesignWorkflows() {
   }, [selectedNodeId, selectedNode, edges]); // Depend on selectedNode object
 
 
+  // --- Sidebar Toggle Callback ---
+  const togglePanel = useCallback(() => {
+      setIsPanelOpen(!isPanelOpen);
+  }, [isPanelOpen]);
+
+
   return (
     <>
       <style>{selectedNodeStyles}</style>
@@ -226,7 +232,9 @@ function DesignWorkflows() {
           onAddParentNode={addParentNode}
           onAddChildNode={addChildNode}
           selectedNodeId={selectedNodeId}
-          onSaveWorkflow={handleSave} // Pass save handler
+          onSaveWorkflow={handleSave}
+          isPanelOpen={isPanelOpen} // Pass panel state
+          onToggleSidebar={togglePanel} // Pass toggle function
         />
 
         {/* Main Content Area (Flow + Sidebar) */}
@@ -250,17 +258,19 @@ function DesignWorkflows() {
               </ReactFlow>
             </div>
 
-            {/* Render Control Panel Sidebar */}
-            <ControlPanel
-              selectedNode={selectedNode}
-              selectedEdgeId={selectedEdgeId}
-              selectedNodeConnections={selectedNodeConnections}
-              onRenameNode={handleRenameNode}
-              onResizeNode={handleParentResize}
-              onDeleteNode={handleDeleteNode}
-              onDeleteEdge={handleDeleteEdge}
-              onDeleteSpecificEdge={handleDeleteSpecificEdge}
-            />
+            {/* Conditionally Render Control Panel Sidebar */}
+            {isPanelOpen && (
+                <ControlPanel
+                  selectedNode={selectedNode}
+                  selectedEdgeId={selectedEdgeId}
+                  selectedNodeConnections={selectedNodeConnections}
+                  onRenameNode={handleRenameNode}
+                  onResizeNode={handleParentResize}
+                  onDeleteNode={handleDeleteNode}
+                  onDeleteEdge={handleDeleteEdge}
+                  onDeleteSpecificEdge={handleDeleteSpecificEdge}
+                />
+            )}
         </div>
       </div>
     </>

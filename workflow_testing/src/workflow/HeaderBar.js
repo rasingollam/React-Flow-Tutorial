@@ -40,7 +40,6 @@ const iconTextButtonIconStyle = {
 };
 const saveButtonSpecificStyles = { // Specific style for save button if needed
     ...iconTextButtonStyles,
-    marginLeft: 'auto', // Push save button to the right
     backgroundColor: '#28a745', // Green background
     color: 'white', // White text
     fontWeight: 'bold',
@@ -57,12 +56,33 @@ const buttonHoverStyles = {
   borderColor: '#bbb',
 };
 
+// Style for icon buttons (controls like zoom, fit, lock)
+const iconButtonStyles = {
+  background: 'none',
+  border: '1px solid transparent', // Transparent border initially
+  padding: '5px',
+  fontSize: '1.2em', // Adjusted size back slightly
+  fontWeight: 'bold', // Make +/- bolder
+  cursor: 'pointer',
+  borderRadius: '4px',
+  lineHeight: '1', // Ensure icon is centered vertically
+  width: '35px', // Keep fixed width for icon-only buttons
+  height: '35px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'background-color 0.2s, border-color 0.2s',
+  color: '#333', // Default color
+};
+
 
 function HeaderBar({
     onAddParentNode,
     onAddChildNode,
     selectedNodeId,
-    onSaveWorkflow, // Add save handler prop
+    onSaveWorkflow,
+    isPanelOpen, // Add prop
+    onToggleSidebar // Add prop
 }) {
   // Simplified hover handlers
   const getButtonStyle = (e) => {
@@ -113,17 +133,29 @@ function HeaderBar({
         Task
       </button>
 
-      {/* Save Button */}
+      {/* Save Button - Remove marginLeft: 'auto' if toggle is last */}
       <button
         onClick={onSaveWorkflow}
-        style={saveButtonSpecificStyles} // Use specific save style
-        onMouseEnter={getSaveButtonStyle} // Use specific save hover
-        onMouseLeave={resetSaveButtonStyle} // Use specific save reset
+        style={{...saveButtonSpecificStyles, marginLeft: 'auto'}} // Keep marginLeft: auto here
+        onMouseEnter={getSaveButtonStyle}
+        onMouseLeave={resetSaveButtonStyle}
         title="Save Workflow"
       >
-        {/* Optional: Add a save icon */}
-        {/* <span style={iconTextButtonIconStyle}>💾</span> */}
         Save
+      </button>
+
+      {/* Separator before toggle */}
+      <div style={{ borderLeft: '1px solid #bbb', height: '20px', margin: '0 5px' }}></div>
+
+      {/* Toggle Sidebar Button */}
+      <button
+        onClick={onToggleSidebar}
+        style={iconButtonStyles} // Use basic icon style
+        onMouseEnter={getButtonStyle} // Use general hover
+        onMouseLeave={resetButtonStyle} // Use general reset
+        title={isPanelOpen ? "Hide Panel" : "Show Panel"}
+      >
+        {isPanelOpen ? '>' : '<'} {/* Arrow indicates action */}
       </button>
 
     </div>
