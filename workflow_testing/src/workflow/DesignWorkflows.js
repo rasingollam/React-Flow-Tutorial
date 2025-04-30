@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'; // Added useMemo
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   addEdge,
@@ -11,18 +11,36 @@ import '@xyflow/react/dist/style.css';
 
 import { initialNodes } from './nodes';
 import { initialEdges } from './edges';
-import CustomGroupNode from './CustomGroupNode'; // Import the custom group node
+import CustomGroupNode from './CustomGroupNode';
 
 // Basic styling for the container and toolbar
-const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'column' };
-const toolbarStyles = { padding: '10px', borderBottom: '1px solid #ccc', background: '#eee', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }; // Added flexWrap
+const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }; // Added position: relative
+const toolbarStyles = { padding: '10px', borderBottom: '1px solid #ccc', background: '#eee', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' };
 const buttonStyles = { marginRight: '10px' };
 const inputStyles = { width: '60px', marginLeft: '5px' };
-const renameInputStyles = { width: '150px', marginLeft: '5px' }; // Style for rename input
+const renameInputStyles = { width: '150px', marginLeft: '5px' };
 const flowStyles = { flexGrow: 1 };
 const rfStyle = {
   backgroundColor: '#f0f0f0',
 };
+// Styles for the save button container and button
+const saveButtonContainerStyles = {
+  position: 'absolute',
+  right: '20px',
+  bottom: '20px',
+  zIndex: 10, // Ensure it's above the ReactFlow component
+};
+const saveButtonStyle = {
+  padding: '10px 20px',
+  fontSize: '16px',
+  cursor: 'pointer',
+  backgroundColor: '#28a745', // Green color
+  color: 'white',
+  border: 'none',
+  borderRadius: '5px',
+  boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+};
+
 
 // Counter for unique node IDs - Start from 0 for empty canvas
 let idCounter = 0;
@@ -30,8 +48,7 @@ const getId = () => `dndnode_${idCounter++}`;
 
 // Define the custom node types
 const nodeTypes = {
-  group: CustomGroupNode, // Register the custom group node
-  // Add other custom node types here if needed
+  group: CustomGroupNode,
 };
 
 function DesignWorkflows() {
@@ -221,6 +238,17 @@ function DesignWorkflows() {
   }, [selectedNodeId, renameInput, setNodes]); // Add dependencies
 
 
+  // Function to handle saving the workflow
+  const handleSave = useCallback(() => {
+    // For now, just log the current nodes and edges
+    // In a real app, you would send this data to a backend API
+    console.log("Saving Workflow:");
+    console.log("Nodes:", nodes);
+    console.log("Edges:", edges);
+    alert("Workflow data logged to console. Check the developer tools.");
+  }, [nodes, edges]); // Depend on nodes and edges
+
+
   return (
     <div style={containerStyles} ref={reactFlowWrapper}>
       <div style={toolbarStyles}>
@@ -281,7 +309,7 @@ function DesignWorkflows() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          nodeTypes={nodeTypes} // Pass the custom node types object
+          nodeTypes={nodeTypes}
           fitView
           style={rfStyle}
           attributionPosition="bottom-right"
@@ -290,6 +318,13 @@ function DesignWorkflows() {
           <Background />
           <Controls />
         </ReactFlow>
+      </div>
+
+      {/* Save Button Container */}
+      <div style={saveButtonContainerStyles}>
+        <button onClick={handleSave} style={saveButtonStyle}>
+          Save Workflow
+        </button>
       </div>
     </div>
   );
