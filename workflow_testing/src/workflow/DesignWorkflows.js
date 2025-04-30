@@ -9,8 +9,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { initialNodes } from './nodes';
-import { initialEdges } from './edges';
 import CustomGroupNode from './CustomGroupNode';
 
 // Basic styling for the container and toolbar
@@ -80,9 +78,9 @@ const nodeTypes = {
 };
 
 function DesignWorkflows() {
-  // Initialize with empty arrays from imported files
-  const [nodes, setNodes] = useState(initialNodes);
-  const [edges, setEdges] = useState(initialEdges);
+  // Initialize with empty arrays
+  const [nodes, setNodes] = useState([]); // Initialize with empty array
+  const [edges, setEdges] = useState([]); // Initialize with empty array
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false);
