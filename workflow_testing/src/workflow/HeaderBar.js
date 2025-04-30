@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react'; // Import useRef
 
 // Styles for the header bar
 const headerStyles = {
@@ -38,17 +38,23 @@ const iconTextButtonIconStyle = {
     fontSize: '1.2em',
     lineHeight: '1',
 };
-const saveButtonSpecificStyles = { // Specific style for save button if needed
+const saveButtonSpecificStyles = {
     ...iconTextButtonStyles,
-    backgroundColor: '#28a745', // Green background
-    color: 'white', // White text
-    fontWeight: 'bold',
+    // Remove marginLeft: 'auto' if Open button is before it
+    // marginLeft: 'auto',
 };
-const saveButtonHoverStyles = { // Specific hover for save button
+const saveButtonHoverStyles = {
     backgroundColor: '#218838', // Darker green on hover
     borderColor: '#1e7e34',
 };
-
+const openButtonSpecificStyles = { // Style for Open button
+    ...iconTextButtonStyles,
+    marginLeft: 'auto', // Push Open and Save group to the right
+};
+const openButtonHoverStyles = { // Hover for Open button
+    backgroundColor: '#e2e6ea',
+    borderColor: '#dae0e5',
+};
 
 // Hover style for buttons
 const buttonHoverStyles = {
@@ -81,9 +87,12 @@ function HeaderBar({
     onAddChildNode,
     selectedNodeId,
     onSaveWorkflow,
-    isPanelOpen, // Add prop
-    onToggleSidebar // Add prop
+    isPanelOpen,
+    onToggleSidebar,
+    onOpenFile, // Add open file handler prop
 }) {
+  const fileInputRef = useRef(null); // Ref for the hidden file input
+
   // Simplified hover handlers
   const getButtonStyle = (e) => {
     // Apply general hover
@@ -106,6 +115,32 @@ function HeaderBar({
     e.currentTarget.style.borderColor = saveButtonSpecificStyles.border; // Use base border or specific one
   };
 
+  // Hover for Open button
+  const getOpenButtonStyle = (e) => {
+    e.currentTarget.style.backgroundColor = openButtonHoverStyles.backgroundColor;
+    e.currentTarget.style.borderColor = openButtonHoverStyles.borderColor;
+  };
+  const resetOpenButtonStyle = (e) => {
+    e.currentTarget.style.backgroundColor = openButtonSpecificStyles.background;
+    e.currentTarget.style.borderColor = openButtonSpecificStyles.border;
+  };
+
+  // Trigger hidden file input click
+  const handleOpenClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handle file selection from hidden input
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onOpenFile(file);
+    }
+    // Reset file input value to allow opening the same file again
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div style={headerStyles}>
@@ -133,10 +168,32 @@ function HeaderBar({
         Task
       </button>
 
-      {/* Save Button - Remove marginLeft: 'auto' if toggle is last */}
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept=".json,application/json" // Accept only JSON files
+        onChange={handleFileChange}
+      />
+
+      {/* Open Button */}
+      <button
+        onClick={handleOpenClick} // Trigger file input
+        style={openButtonSpecificStyles} // Use specific open style
+        onMouseEnter={getOpenButtonStyle}
+        onMouseLeave={resetOpenButtonStyle}
+        title="Open Workflow File"
+      >
+        {/* Optional: Add an open icon */}
+        {/* <span style={iconTextButtonIconStyle}>📂</span> */}
+        Open
+      </button>
+
+      {/* Save Button */}
       <button
         onClick={onSaveWorkflow}
-        style={{...saveButtonSpecificStyles, marginLeft: 'auto'}} // Keep marginLeft: auto here
+        style={saveButtonSpecificStyles} // Use specific save style
         onMouseEnter={getSaveButtonStyle}
         onMouseLeave={resetSaveButtonStyle}
         title="Save Workflow"

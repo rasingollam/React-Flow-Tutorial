@@ -6,7 +6,7 @@ import {
   applyNodeChanges,
   Background,
   Controls,
-  useReactFlow, // Ensure useReactFlow is imported
+  useReactFlow,
   ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -70,7 +70,7 @@ function DesignWorkflows() {
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const reactFlowWrapper = useRef(null);
-  const { getViewport } = useReactFlow(); // Get getViewport function
+  const { getViewport, setViewport } = useReactFlow(); // Get setViewport
 
   // Effect to update selected IDs based on nodes/edges state
   useEffect(() => {
@@ -220,6 +220,60 @@ function DesignWorkflows() {
   }, [nodes, edges, getViewport]);
 
 
+  // --- Open File Callback ---
+  const handleOpenFile = useCallback((file) => {
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      try {
+        const fileContent = event.target?.result;
+        if (typeof fileContent !== 'string') {
+            throw new Error("Failed to read file content.");
+        }
+        const flowData = JSON.parse(fileContent);
+
+        // Basic validation
+        if (flowData && Array.isArray(flowData.nodes) && Array.isArray(flowData.edges) && flowData.viewport) {
+          // It's crucial to ensure nodes have correct dimensions if not set explicitly
+          // React Flow might need width/height for certain node types or operations
+          const validatedNodes = flowData.nodes.map(node => ({
+              ...node,
+              // Ensure position exists
+              position: node.position || { x: 0, y: 0 },
+              // Add default dimensions if missing and needed (example)
+              // width: node.width || 150,
+              // height: node.height || 40,
+          }));
+
+          setNodes(validatedNodes);
+          setEdges(flowData.edges);
+          setViewport(flowData.viewport);
+
+          // Reset selection state after loading
+          setSelectedNodeId(null);
+          setSelectedEdgeId(null);
+
+          console.log("Workflow loaded successfully.");
+          // Optional: alert("Workflow loaded successfully.");
+
+        } else {
+          throw new Error("Invalid workflow file format.");
+        }
+      } catch (error) {
+        console.error("Error loading workflow file:", error);
+        alert(`Error loading workflow file: ${error.message}`);
+      }
+    };
+
+    reader.onerror = (error) => {
+        console.error("Error reading file:", error);
+        alert("Error reading file.");
+    };
+
+    reader.readAsText(file); // Read the file as text
+  }, [setNodes, setEdges, setViewport]);
+
+
   // --- Memos for Derived Data (passed to ControlPanel) ---
   const sortedNodes = useMemo(() => {
     // ... (keep existing sorting logic) ...
@@ -255,7 +309,8 @@ function DesignWorkflows() {
           onAddParentNode={addParentNode}
           onAddChildNode={addChildNode}
           selectedNodeId={selectedNodeId}
-          onSaveWorkflow={handleSave} // Pass updated save handler
+          onSaveWorkflow={handleSave}
+          onOpenFile={handleOpenFile} // Pass open handler
           isPanelOpen={isPanelOpen} // Pass panel state
           onToggleSidebar={togglePanel} // Pass toggle function
         />
@@ -311,4 +366,4 @@ function DesignWorkflowsWrapper() {
   );
 }
 
-export default DesignWorkflowsWrapper; // Export the wrapped component
+export default DesignWorkflowsWrapper;
