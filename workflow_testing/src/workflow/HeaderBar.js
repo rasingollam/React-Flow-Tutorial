@@ -1,86 +1,88 @@
-import React, { useRef } from 'react'; // Import useRef
+import React, { useRef } from 'react';
 
-// Styles for the header bar
+// --- Updated Header Styles ---
+
 const headerStyles = {
-  padding: '5px 10px',
-  borderBottom: '1px solid #ccc',
-  background: '#ddd',
+  padding: '8px 16px', // Adjusted padding
+  borderBottom: '1px solid #e0e0e0', // Lighter border
+  background: '#ffffff', // White background
   display: 'flex',
   alignItems: 'center',
-  gap: '5px',
+  gap: '8px', // Consistent gap
+  fontFamily: 'Arial, sans-serif', // Match ControlPanel font
 };
 
-// Base style for buttons in the header
+// Base style for all buttons in the header
 const baseButtonStyles = {
-  background: 'none',
-  border: '1px solid transparent',
-  padding: '5px',
-  cursor: 'pointer',
-  borderRadius: '4px',
-  lineHeight: '1',
-  display: 'flex',
+  display: 'inline-flex', // Use inline-flex for icon/text alignment
   alignItems: 'center',
   justifyContent: 'center',
-  transition: 'background-color 0.2s, border-color 0.2s',
-  color: '#333',
+  padding: '6px 12px', // Adjusted padding
+  border: '1px solid #ccc', // Default border
+  borderRadius: '4px',
+  fontSize: '13px', // Consistent font size
+  fontWeight: '500',
+  cursor: 'pointer',
+  transition: 'background-color 0.2s, border-color 0.2s, color 0.2s',
+  backgroundColor: '#ffffff', // Default background
+  color: '#333', // Default text color
+  whiteSpace: 'nowrap', // Prevent text wrapping
 };
 
 // Style for buttons with icon and text (Add Stage, Add Task)
 const iconTextButtonStyles = {
     ...baseButtonStyles,
-    width: 'auto',
-    gap: '5px',
-    padding: '5px 8px',
-    fontSize: '1em',
-    fontWeight: 'normal',
+    gap: '6px', // Gap between icon and text
 };
 const iconTextButtonIconStyle = {
-    fontSize: '1.2em',
+    fontSize: '1.1em', // Slightly larger icon
     lineHeight: '1',
 };
-const saveButtonSpecificStyles = {
-    ...iconTextButtonStyles,
-    // Remove marginLeft: 'auto' if Open button is before it
-    // marginLeft: 'auto',
+
+// Style for icon-only buttons (Toggle Sidebar)
+const iconButtonStyles = {
+    ...baseButtonStyles,
+    width: '32px', // Fixed size for icon buttons
+    height: '32px',
+    padding: '0', // Remove padding for icon-only
+    fontSize: '1.2em', // Icon size
 };
-const saveButtonHoverStyles = {
-    backgroundColor: '#218838', // Darker green on hover
+
+// Specific styles for action buttons (Open, Save)
+const actionButtonStyle = {
+    ...iconTextButtonStyles, // Based on icon-text style
+    fontWeight: '600',
+};
+
+const openButtonStyle = {
+    ...actionButtonStyle,
+    marginLeft: 'auto', // Push Open/Save group to the right
+    borderColor: '#6c757d',
+    color: '#343a40',
+};
+const openButtonHoverStyle = {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#5a6268',
+};
+
+const saveButtonStyle = {
+    ...actionButtonStyle,
+    backgroundColor: '#28a745',
+    borderColor: '#28a745',
+    color: 'white',
+};
+const saveButtonHoverStyle = {
+    backgroundColor: '#218838',
     borderColor: '#1e7e34',
 };
-const openButtonSpecificStyles = { // Style for Open button
-    ...iconTextButtonStyles,
-    marginLeft: 'auto', // Push Open and Save group to the right
-};
-const openButtonHoverStyles = { // Hover for Open button
-    backgroundColor: '#e2e6ea',
-    borderColor: '#dae0e5',
+
+// Hover for default buttons
+const defaultButtonHoverStyle = {
+    backgroundColor: '#f8f9fa', // Lighter background on hover
+    borderColor: '#adb5bd',
 };
 
-// Hover style for buttons
-const buttonHoverStyles = {
-  backgroundColor: '#eee',
-  borderColor: '#bbb',
-};
-
-// Style for icon buttons (controls like zoom, fit, lock)
-const iconButtonStyles = {
-  background: 'none',
-  border: '1px solid transparent', // Transparent border initially
-  padding: '5px',
-  fontSize: '1.2em', // Adjusted size back slightly
-  fontWeight: 'bold', // Make +/- bolder
-  cursor: 'pointer',
-  borderRadius: '4px',
-  lineHeight: '1', // Ensure icon is centered vertically
-  width: '35px', // Keep fixed width for icon-only buttons
-  height: '35px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  transition: 'background-color 0.2s, border-color 0.2s',
-  color: '#333', // Default color
-};
-
+// --- Component ---
 
 function HeaderBar({
     onAddParentNode,
@@ -89,48 +91,26 @@ function HeaderBar({
     onSaveWorkflow,
     isPanelOpen,
     onToggleSidebar,
-    onOpenFile, // Add open file handler prop
+    onOpenFile,
 }) {
-  const fileInputRef = useRef(null); // Ref for the hidden file input
+  const fileInputRef = useRef(null);
 
-  // Simplified hover handlers
-  const getButtonStyle = (e) => {
-    // Apply general hover
-    e.currentTarget.style.backgroundColor = buttonHoverStyles.backgroundColor;
-    e.currentTarget.style.borderColor = buttonHoverStyles.borderColor;
+  // Generic hover handlers using base styles
+  const addHover = (e, hoverStyle) => {
+      Object.assign(e.currentTarget.style, hoverStyle);
   };
-  const resetButtonStyle = (e) => {
-    // Reset general style
-    e.currentTarget.style.backgroundColor = iconTextButtonStyles.background; // Use base background
-    e.currentTarget.style.borderColor = iconTextButtonStyles.border; // Use base border
-  };
-
-  // Specific hover for save button
-   const getSaveButtonStyle = (e) => {
-    e.currentTarget.style.backgroundColor = saveButtonHoverStyles.backgroundColor;
-    e.currentTarget.style.borderColor = saveButtonHoverStyles.borderColor;
-  };
-  const resetSaveButtonStyle = (e) => {
-    e.currentTarget.style.backgroundColor = saveButtonSpecificStyles.backgroundColor;
-    e.currentTarget.style.borderColor = saveButtonSpecificStyles.border; // Use base border or specific one
+  const removeHover = (e, baseStyle) => {
+      // Ensure baseStyle includes all properties being changed by hoverStyle
+      // This might need refinement if hover styles change more than bg/border
+      e.currentTarget.style.backgroundColor = baseStyle.backgroundColor || baseButtonStyles.backgroundColor;
+      e.currentTarget.style.borderColor = baseStyle.borderColor || baseButtonStyles.borderColor;
+      e.currentTarget.style.color = baseStyle.color || baseButtonStyles.color;
   };
 
-  // Hover for Open button
-  const getOpenButtonStyle = (e) => {
-    e.currentTarget.style.backgroundColor = openButtonHoverStyles.backgroundColor;
-    e.currentTarget.style.borderColor = openButtonHoverStyles.borderColor;
-  };
-  const resetOpenButtonStyle = (e) => {
-    e.currentTarget.style.backgroundColor = openButtonSpecificStyles.background;
-    e.currentTarget.style.borderColor = openButtonSpecificStyles.border;
-  };
-
-  // Trigger hidden file input click
   const handleOpenClick = () => {
     fileInputRef.current?.click();
   };
 
-  // Handle file selection from hidden input
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -148,24 +128,24 @@ function HeaderBar({
       <button
         onClick={onAddParentNode}
         style={iconTextButtonStyles}
-        onMouseEnter={getButtonStyle}
-        onMouseLeave={resetButtonStyle}
+        onMouseEnter={(e) => addHover(e, defaultButtonHoverStyle)}
+        onMouseLeave={(e) => removeHover(e, iconTextButtonStyles)}
         title="Add Stage (Parent Node)"
       >
         <span style={iconTextButtonIconStyle}>📦</span>
-        Stage
+        <span>Stage</span> {/* Wrap text in span for consistency */}
       </button>
 
       {/* Add Task Button */}
       <button
         onClick={onAddChildNode}
         style={iconTextButtonStyles}
-        onMouseEnter={getButtonStyle}
-        onMouseLeave={resetButtonStyle}
+        onMouseEnter={(e) => addHover(e, defaultButtonHoverStyle)}
+        onMouseLeave={(e) => removeHover(e, iconTextButtonStyles)}
         title={selectedNodeId ? 'Add Task to Selected' : 'Add Task (Child Node)'}
       >
         <span style={iconTextButtonIconStyle}>➕</span>
-        Task
+        <span>Task</span> {/* Wrap text in span */}
       </button>
 
       {/* Hidden File Input */}
@@ -179,40 +159,41 @@ function HeaderBar({
 
       {/* Open Button */}
       <button
-        onClick={handleOpenClick} // Trigger file input
-        style={openButtonSpecificStyles} // Use specific open style
-        onMouseEnter={getOpenButtonStyle}
-        onMouseLeave={resetOpenButtonStyle}
+        onClick={handleOpenClick}
+        style={openButtonStyle}
+        onMouseEnter={(e) => addHover(e, openButtonHoverStyle)}
+        onMouseLeave={(e) => removeHover(e, openButtonStyle)}
         title="Open Workflow File"
       >
-        {/* Optional: Add an open icon */}
         {/* <span style={iconTextButtonIconStyle}>📂</span> */}
-        Open
+        <span>Open</span>
       </button>
 
       {/* Save Button */}
       <button
         onClick={onSaveWorkflow}
-        style={saveButtonSpecificStyles} // Use specific save style
-        onMouseEnter={getSaveButtonStyle}
-        onMouseLeave={resetSaveButtonStyle}
+        style={saveButtonStyle}
+        onMouseEnter={(e) => addHover(e, saveButtonHoverStyle)}
+        onMouseLeave={(e) => removeHover(e, saveButtonStyle)}
         title="Save Workflow"
       >
-        Save
+        {/* <span style={iconTextButtonIconStyle}>💾</span> */}
+        <span>Save</span>
       </button>
 
-      {/* Separator before toggle */}
-      <div style={{ borderLeft: '1px solid #bbb', height: '20px', margin: '0 5px' }}></div>
+      {/* Separator (Optional but helps visually) */}
+      <div style={{ borderLeft: '1px solid #e0e0e0', height: '20px', margin: '0 4px' }}></div>
 
       {/* Toggle Sidebar Button */}
       <button
         onClick={onToggleSidebar}
-        style={iconButtonStyles} // Use basic icon style
-        onMouseEnter={getButtonStyle} // Use general hover
-        onMouseLeave={resetButtonStyle} // Use general reset
+        style={iconButtonStyles} // Use icon-only style
+        onMouseEnter={(e) => addHover(e, defaultButtonHoverStyle)}
+        onMouseLeave={(e) => removeHover(e, iconButtonStyles)}
         title={isPanelOpen ? "Hide Panel" : "Show Panel"}
       >
-        {isPanelOpen ? '>' : '<'} {/* Arrow indicates action */}
+        {/* Use slightly different arrows */}
+        {isPanelOpen ? '»' : '«'}
       </button>
 
     </div>
