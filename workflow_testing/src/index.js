@@ -3,8 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css'; // Assuming you have basic CSS
 import App from './App';
-import DesignWorkflows from './DesignWorkflows';
-import reportWebVitals from './reportWebVitals';
+import DesignWorkflows from './workflow/DesignWorkflows';
+import reportWebVitals from './workflow/reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
