@@ -41,6 +41,16 @@ const getId = (type) => {
 
 const getEdgeId = () => `Connection_${edgeIdCounter++}`;
 
+// Function to extract number from ID string (e.g., "Task_12" -> 12)
+const extractIdNumber = (id, prefix) => {
+    if (typeof id === 'string' && id.startsWith(prefix)) {
+        const numberPart = id.substring(prefix.length);
+        const number = parseInt(numberPart, 10);
+        return isNaN(number) ? -1 : number;
+    }
+    return -1;
+};
+
 // --- Node Types Definition (moved outside component) ---
 const nodeTypes = {
   group: CustomGroupNode,
@@ -70,7 +80,7 @@ function DesignWorkflows() {
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const reactFlowWrapper = useRef(null);
-  const { getViewport, setViewport } = useReactFlow(); // Get setViewport
+  const { getViewport, setViewport } = useReactFlow();
 
   // Effect to update selected IDs based on nodes/edges state
   useEffect(() => {
@@ -232,17 +242,35 @@ function DesignWorkflows() {
         }
         const flowData = JSON.parse(fileContent);
 
-        // Basic validation
         if (flowData && Array.isArray(flowData.nodes) && Array.isArray(flowData.edges) && flowData.viewport) {
-          // It's crucial to ensure nodes have correct dimensions if not set explicitly
-          // React Flow might need width/height for certain node types or operations
+          // --- Update ID Counters ---
+          let maxStageId = -1;
+          let maxTaskId = -1;
+          let maxEdgeId = -1;
+
+          flowData.nodes.forEach(node => {
+            const stageNum = extractIdNumber(node.id, 'Stage_');
+            const taskNum = extractIdNumber(node.id, 'Task_');
+            if (stageNum > maxStageId) maxStageId = stageNum;
+            if (taskNum > maxTaskId) maxTaskId = taskNum;
+          });
+
+          flowData.edges.forEach(edge => {
+            const edgeNum = extractIdNumber(edge.id, 'Connection_');
+            if (edgeNum > maxEdgeId) maxEdgeId = edgeNum;
+          });
+
+          // Set counters to the next available ID
+          stageIdCounter = maxStageId + 1;
+          taskIdCounter = maxTaskId + 1;
+          edgeIdCounter = maxEdgeId + 1;
+          // --- End Update ID Counters ---
+
+
           const validatedNodes = flowData.nodes.map(node => ({
               ...node,
               // Ensure position exists
               position: node.position || { x: 0, y: 0 },
-              // Add default dimensions if missing and needed (example)
-              // width: node.width || 150,
-              // height: node.height || 40,
           }));
 
           setNodes(validatedNodes);
@@ -253,7 +281,7 @@ function DesignWorkflows() {
           setSelectedNodeId(null);
           setSelectedEdgeId(null);
 
-          console.log("Workflow loaded successfully.");
+          console.log("Workflow loaded successfully. ID counters updated.");
           // Optional: alert("Workflow loaded successfully.");
 
         } else {
