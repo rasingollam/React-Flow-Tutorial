@@ -12,7 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import CustomGroupNode from './CustomGroupNode';
-import HeaderBar from './HeaderBar'; // Import the new HeaderBar
+import HeaderBar from './HeaderBar';
 import ControlPanel from './ControlPanel';
 
 // Updated container style for column layout (Header + Main Content)
@@ -22,23 +22,6 @@ const mainContentStyles = { display: 'flex', flexDirection: 'row', flexGrow: 1, 
 const flowContainerStyles = { flexGrow: 1, height: '100%' };
 const rfStyle = {
   backgroundColor: '#f0f0f0',
-};
-// Styles for the save button container and button (can remain absolute or be moved)
-const saveButtonContainerStyles = {
-  position: 'absolute',
-  right: '320px', // Adjust position based on sidebar width
-  bottom: '20px',
-  zIndex: 10,
-};
-const saveButtonStyle = {
-  padding: '10px 20px',
-  fontSize: '16px',
-  cursor: 'pointer',
-  backgroundColor: '#28a745',
-  color: 'white',
-  border: 'none',
-  borderRadius: '5px',
-  boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
 };
 
 // --- ID Generation (moved outside component) ---
@@ -64,6 +47,22 @@ const nodeTypes = {
 };
 
 
+// Define CSS styles as a string
+const selectedNodeStyles = `
+  .react-flow__node.selected {
+    border: 2px solid #007bff !important; /* Use !important to ensure override */
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+  }
+
+  /* Optional: Style for selected group nodes specifically */
+  /*
+  .react-flow__node.selected.react-flow__node-group {
+     border-color: #ffc107 !important;
+  }
+  */
+`;
+
+
 function DesignWorkflows() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
@@ -71,9 +70,6 @@ function DesignWorkflows() {
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const reactFlowWrapper = useRef(null);
   // REMOVED: useReactFlow hook usage here if only used for controls
-
-  // REMOVED: Lock State
-  // const [isLocked, setIsLocked] = useState(false);
 
   // Effect to update selected IDs based on nodes/edges state
   useEffect(() => {
@@ -222,55 +218,52 @@ function DesignWorkflows() {
 
 
   return (
-    <div style={containerStyles}>
-      {/* Render Header Bar */}
-      <HeaderBar
-        onAddParentNode={addParentNode}
-        onAddChildNode={addChildNode}
-        selectedNodeId={selectedNodeId}
-      />
+    <>
+      <style>{selectedNodeStyles}</style>
+      <div style={containerStyles}>
+        {/* Render Header Bar */}
+        <HeaderBar
+          onAddParentNode={addParentNode}
+          onAddChildNode={addChildNode}
+          selectedNodeId={selectedNodeId}
+          onSaveWorkflow={handleSave} // Pass save handler
+        />
 
-      {/* Main Content Area (Flow + Sidebar) */}
-      <div style={mainContentStyles}>
-          <div style={flowContainerStyles} ref={reactFlowWrapper}>
-            <ReactFlow
-              nodes={sortedNodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              nodeTypes={nodeTypes}
-              fitView
-              style={rfStyle}
-              attributionPosition="bottom-right"
-              selectNodesOnDrag={true}
-              edgesFocusable={true}
-            >
-              <Background />
-              <Controls /> {/* Re-added default controls */}
-            </ReactFlow>
-          </div>
+        {/* Main Content Area (Flow + Sidebar) */}
+        <div style={mainContentStyles}>
+            <div style={flowContainerStyles} ref={reactFlowWrapper}>
+              <ReactFlow
+                nodes={sortedNodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={nodeTypes}
+                fitView
+                style={rfStyle}
+                attributionPosition="bottom-right"
+                selectNodesOnDrag={true}
+                edgesFocusable={true}
+              >
+                <Background />
+                <Controls />
+              </ReactFlow>
+            </div>
 
-          {/* Render Control Panel Sidebar */}
-          <ControlPanel
-            selectedNode={selectedNode}
-            selectedEdgeId={selectedEdgeId}
-            selectedNodeConnections={selectedNodeConnections}
-            onRenameNode={handleRenameNode}
-            onResizeNode={handleParentResize}
-            onDeleteNode={handleDeleteNode}
-            onDeleteEdge={handleDeleteEdge}
-            onDeleteSpecificEdge={handleDeleteSpecificEdge}
-          />
-
-          {/* Save Button Container (might need position adjustment) */}
-          <div style={saveButtonContainerStyles}>
-            <button onClick={handleSave} style={saveButtonStyle}>
-              Save Workflow
-            </button>
-          </div>
+            {/* Render Control Panel Sidebar */}
+            <ControlPanel
+              selectedNode={selectedNode}
+              selectedEdgeId={selectedEdgeId}
+              selectedNodeConnections={selectedNodeConnections}
+              onRenameNode={handleRenameNode}
+              onResizeNode={handleParentResize}
+              onDeleteNode={handleDeleteNode}
+              onDeleteEdge={handleDeleteEdge}
+              onDeleteSpecificEdge={handleDeleteSpecificEdge}
+            />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -38,6 +38,17 @@ const iconTextButtonIconStyle = {
     fontSize: '1.2em',
     lineHeight: '1',
 };
+const saveButtonSpecificStyles = { // Specific style for save button if needed
+    ...iconTextButtonStyles,
+    marginLeft: 'auto', // Push save button to the right
+    backgroundColor: '#28a745', // Green background
+    color: 'white', // White text
+    fontWeight: 'bold',
+};
+const saveButtonHoverStyles = { // Specific hover for save button
+    backgroundColor: '#218838', // Darker green on hover
+    borderColor: '#1e7e34',
+};
 
 
 // Hover style for buttons
@@ -51,16 +62,30 @@ function HeaderBar({
     onAddParentNode,
     onAddChildNode,
     selectedNodeId,
+    onSaveWorkflow, // Add save handler prop
 }) {
   // Simplified hover handlers
   const getButtonStyle = (e) => {
+    // Apply general hover
     e.currentTarget.style.backgroundColor = buttonHoverStyles.backgroundColor;
     e.currentTarget.style.borderColor = buttonHoverStyles.borderColor;
   };
   const resetButtonStyle = (e) => {
-    e.currentTarget.style.backgroundColor = baseButtonStyles.background;
-    e.currentTarget.style.borderColor = baseButtonStyles.border;
+    // Reset general style
+    e.currentTarget.style.backgroundColor = iconTextButtonStyles.background; // Use base background
+    e.currentTarget.style.borderColor = iconTextButtonStyles.border; // Use base border
   };
+
+  // Specific hover for save button
+   const getSaveButtonStyle = (e) => {
+    e.currentTarget.style.backgroundColor = saveButtonHoverStyles.backgroundColor;
+    e.currentTarget.style.borderColor = saveButtonHoverStyles.borderColor;
+  };
+  const resetSaveButtonStyle = (e) => {
+    e.currentTarget.style.backgroundColor = saveButtonSpecificStyles.backgroundColor;
+    e.currentTarget.style.borderColor = saveButtonSpecificStyles.border; // Use base border or specific one
+  };
+
 
   return (
     <div style={headerStyles}>
@@ -86,6 +111,19 @@ function HeaderBar({
       >
         <span style={iconTextButtonIconStyle}>➕</span>
         Task
+      </button>
+
+      {/* Save Button */}
+      <button
+        onClick={onSaveWorkflow}
+        style={saveButtonSpecificStyles} // Use specific save style
+        onMouseEnter={getSaveButtonStyle} // Use specific save hover
+        onMouseLeave={resetSaveButtonStyle} // Use specific save reset
+        title="Save Workflow"
+      >
+        {/* Optional: Add a save icon */}
+        {/* <span style={iconTextButtonIconStyle}>💾</span> */}
+        Save
       </button>
 
     </div>
