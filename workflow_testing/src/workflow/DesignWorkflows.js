@@ -54,9 +54,25 @@ const connectionItemStyle = { marginBottom: '5px', display: 'flex', justifyConte
 const connectionTextStyle = { fontSize: '12px', marginRight: '10px' };
 
 
-// Counter for unique node IDs - Start from 0 for empty canvas
-let idCounter = 0;
-const getId = () => `Stage ${idCounter++}`;
+// Counters for unique node/edge IDs
+let stageIdCounter = 0;
+let taskIdCounter = 0;
+let edgeIdCounter = 0; // Counter for custom edge IDs
+
+// Modified getId function
+const getId = (type) => {
+  switch (type) {
+    case 'group':
+      return `Stage_${stageIdCounter++}`;
+    case 'task':
+    default: // Default to task prefix if type is missing or different
+      return `Task_${taskIdCounter++}`;
+  }
+};
+
+// Function to get a unique edge ID
+const getEdgeId = () => `Connection_${edgeIdCounter++}`;
+
 
 // Define the custom node types
 const nodeTypes = {
@@ -144,28 +160,34 @@ function DesignWorkflows() {
     },
     [setEdges],
   );
+
+  // Modified onConnect to use custom edge IDs
   const onConnect = useCallback(
-    (connection) => setEdges((eds) => addEdge(connection, eds)),
+    (connection) => {
+      const newEdge = {
+        ...connection,
+        id: getEdgeId(), // Generate custom edge ID
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    },
     [setEdges],
   );
 
 
   // Function to add a new parent node using the custom type
   const addParentNode = useCallback(() => {
-    const newNodeId = getId();
+    const newNodeId = getId('group'); // Use 'group' type for ID
     const newNode = {
       id: newNodeId,
-      type: 'group', // This now refers to our CustomGroupNode via nodeTypes
-      data: { label: 'New Stage' },
+      type: 'group',
+      data: { label: 'New Stage' }, // Updated label
       position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 },
       style: {
         width: 500,
         height: 500,
         backgroundColor: 'rgba(0, 0, 255, 0.1)',
-        // Border is now handled by CustomGroupNode, but can be overridden here
-        // border: '1px solid blue',
       },
-      selected: true, // Mark the new node as selected
+      selected: true,
     };
 
     setNodes((nds) =>
@@ -179,7 +201,7 @@ function DesignWorkflows() {
   // Modified function to add a child node inside the selected parent OR as an orphan
   const addChildNode = useCallback(() => {
     const parentNode = nodes.find(node => node.id === selectedNodeId); // Use selectedNodeId state here
-    const newNodeId = getId();
+    const newNodeId = getId('task'); // Use 'task' type for ID
     let newNode;
 
     if (parentNode) {
@@ -191,20 +213,20 @@ function DesignWorkflows() {
 
       newNode = {
         id: newNodeId,
-        data: { label: `Task of ${parentNode.id}` },
+        data: { label: `New Task` }, // Updated label
         position: { x: childX, y: childY },
         parentId: parentNode.id,
         extent: 'parent', // Keep it within the parent bounds
       };
     } else {
-      // Add as a regular node if no parent is selected
+      // Add as a regular node (still using 'task' prefix as requested)
       newNode = {
         id: newNodeId,
-        data: { label: 'New Node' }, // Changed label slightly
+        data: { label: 'New Task' }, // Updated label
         position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 150 },
       };
       // Optionally, provide feedback that no parent was selected
-      console.log("No parent selected, adding new node to canvas."); // Log message updated
+      console.log("No parent selected, adding new task node to canvas."); // Log message updated
     }
 
     setNodes((nds) => nds.concat(newNode));
