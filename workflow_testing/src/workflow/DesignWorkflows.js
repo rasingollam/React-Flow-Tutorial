@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   addEdge,
@@ -39,6 +39,15 @@ const saveButtonStyle = {
   border: 'none',
   borderRadius: '5px',
   boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+};
+const deleteButtonStyle = {
+    backgroundColor: '#dc3545', // Red color
+    color: 'white',
+    padding: '5px 10px',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    marginLeft: '10px',
 };
 
 
@@ -238,6 +247,32 @@ function DesignWorkflows() {
   }, [selectedNodeId, renameInput, setNodes]); // Add dependencies
 
 
+  // Function to handle deleting the selected node
+  const handleDeleteNode = useCallback(() => {
+    if (!selectedNodeId) {
+      console.log("Delete failed: No node selected.");
+      return;
+    }
+
+    console.log(`Attempting to delete node ${selectedNodeId}`);
+
+    // Remove the selected node
+    setNodes((nds) => nds.filter((node) => node.id !== selectedNodeId));
+
+    // Remove edges connected to the selected node
+    setEdges((eds) =>
+      eds.filter(
+        (edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId
+      )
+    );
+
+    // Clear selection state manually since the node is gone
+    setSelectedNodeId(null);
+    // No need to clear other inputs here, useEffect will handle it when selectedNodeId becomes null
+
+  }, [selectedNodeId, setNodes, setEdges]); // Add dependencies
+
+
   // Function to handle saving the workflow with specific data structure
   const handleSave = useCallback(() => {
     const parentNodesData = [];
@@ -305,43 +340,51 @@ function DesignWorkflows() {
            {selectedNodeId ? 'Add Child to Selected' : 'Add Node'}
         </button>
 
-        {/* Rename Controls - Visible when any node is selected */}
+        {/* Edit Controls Container - Visible when any node is selected */}
         {selectedNodeId && (
-          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px' }}>
-            <span>Rename Node ({selectedNodeId}):</span>
-            <input
-              type="text"
-              value={renameInput}
-              onChange={(e) => setRenameInput(e.target.value)}
-              style={renameInputStyles}
-            />
-            <button onClick={handleRenameNode} style={{ marginLeft: '5px' }}>Apply Name</button>
-          </div>
-        )}
+          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Rename Controls */}
+            <div>
+              <span>Rename Node ({selectedNodeId}):</span>
+              <input
+                type="text"
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                style={renameInputStyles}
+              />
+              <button onClick={handleRenameNode} style={{ marginLeft: '5px' }}>Apply Name</button>
+            </div>
 
-        {/* Resize Controls - Visible only when a group node is selected */}
-        {selectedNodeIsGroup && (
-          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px' }}>
-            <span>Resize Parent:</span>
-            <label> W:
-              <input
-                type="number"
-                value={widthInput}
-                onChange={(e) => setWidthInput(e.target.value)}
-                style={inputStyles}
-                min="10" // Example minimum
-              />
-            </label>
-            <label> H:
-              <input
-                type="number"
-                value={heightInput}
-                onChange={(e) => setHeightInput(e.target.value)}
-                style={inputStyles}
-                min="10" // Example minimum
-              />
-            </label>
-            <button onClick={handleParentResize}>Apply Size</button>
+            {/* Resize Controls - Visible only when a group node is selected */}
+            {selectedNodeIsGroup && (
+              <div>
+                <span>Resize Parent:</span>
+                <label> W:
+                  <input
+                    type="number"
+                    value={widthInput}
+                    onChange={(e) => setWidthInput(e.target.value)}
+                    style={inputStyles}
+                    min="10"
+                  />
+                </label>
+                <label> H:
+                  <input
+                    type="number"
+                    value={heightInput}
+                    onChange={(e) => setHeightInput(e.target.value)}
+                    style={inputStyles}
+                    min="10"
+                  />
+                </label>
+                <button onClick={handleParentResize} style={{ marginLeft: '5px' }}>Apply Size</button>
+              </div>
+            )}
+
+            {/* Delete Button */}
+            <button onClick={handleDeleteNode} style={deleteButtonStyle}>
+              Delete Node
+            </button>
           </div>
         )}
 
