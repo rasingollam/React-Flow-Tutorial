@@ -238,14 +238,61 @@ function DesignWorkflows() {
   }, [selectedNodeId, renameInput, setNodes]); // Add dependencies
 
 
-  // Function to handle saving the workflow
+  // Function to handle saving the workflow with specific data structure
   const handleSave = useCallback(() => {
-    // For now, just log the current nodes and edges
-    // In a real app, you would send this data to a backend API
-    console.log("Saving Workflow:");
-    console.log("Nodes:", nodes);
-    console.log("Edges:", edges);
-    alert("Workflow data logged to console. Check the developer tools.");
+    const parentNodesData = [];
+    const childNodesData = [];
+
+    // Process nodes
+    nodes.forEach(node => {
+      if (node.type === 'group' || !node.parentId) { // Identify parent/group nodes
+        parentNodesData.push({
+          id: node.id,
+          label: node.data?.label || '',
+        });
+      } else if (node.parentId) { // Identify child nodes
+        // Find edges connected to this child node
+        const connectedEdges = edges.filter(edge => edge.source === node.id || edge.target === node.id);
+
+        // Initialize sources and targets arrays
+        const sources = [];
+        const targets = [];
+
+        // Populate sources and targets based on connected edges
+        connectedEdges.forEach(edge => {
+          if (edge.target === node.id) {
+            // If this node is the target, the edge source is an incoming connection
+            sources.push(edge.source);
+          }
+          if (edge.source === node.id) {
+            // If this node is the source, the edge target is an outgoing connection
+            targets.push(edge.target);
+          }
+        });
+
+        childNodesData.push({
+          id: node.id,
+          label: node.data?.label || '',
+          parentNode: node.parentId,
+          // Assign the new connections structure
+          connections: {
+             sources: sources,
+             targets: targets,
+          },
+        });
+      }
+    });
+
+    // Prepare the final structured data
+    const structuredData = {
+      parentNodes: parentNodesData,
+      childNodes: childNodesData,
+    };
+
+    console.log("Saving Structured Workflow Data:");
+    console.log(JSON.stringify(structuredData, null, 2)); // Pretty print JSON
+    alert("Structured workflow data logged to console. Check the developer tools.");
+
   }, [nodes, edges]); // Depend on nodes and edges
 
 
