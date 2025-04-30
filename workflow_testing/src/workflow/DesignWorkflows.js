@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'; // Added useEffect
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   addEdge,
@@ -14,9 +14,10 @@ import { initialEdges } from './edges';
 
 // Basic styling for the container and toolbar
 const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'column' };
-const toolbarStyles = { padding: '10px', borderBottom: '1px solid #ccc', background: '#eee', display: 'flex', alignItems: 'center', gap: '10px' }; // Use flex and gap
-const buttonStyles = { marginRight: '10px' }; // Keep margin for buttons if needed
-const inputStyles = { width: '60px', marginLeft: '5px' }; // Style for inputs
+const toolbarStyles = { padding: '10px', borderBottom: '1px solid #ccc', background: '#eee', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }; // Added flexWrap
+const buttonStyles = { marginRight: '10px' };
+const inputStyles = { width: '60px', marginLeft: '5px' };
+const renameInputStyles = { width: '150px', marginLeft: '5px' }; // Style for rename input
 const flowStyles = { flexGrow: 1 };
 const rfStyle = {
   backgroundColor: '#f0f0f0',
@@ -31,46 +32,60 @@ function DesignWorkflows() {
   // Initialize with empty arrays from imported files
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-  const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [selectedNodeId, setSelectedNodeId] = useState(null); // Still useful for UI logic
   const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false);
   const [widthInput, setWidthInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
+  const [renameInput, setRenameInput] = useState('');
   const reactFlowWrapper = useRef(null);
 
 
-  // Find the selected node object
-  const selectedNode = nodes.find(node => node.id === selectedNodeId);
-
-  // Effect to update input fields when selected node changes
+  // Effect to update UI state based on the currently selected node in the nodes array
   useEffect(() => {
-    if (selectedNode && selectedNode.type === 'group') {
-      setSelectedNodeIsGroup(true);
-      setWidthInput(selectedNode.style?.width || '');
-      setHeightInput(selectedNode.style?.height || '');
+    // Find the node that has selected = true
+    const currentlySelectedNode = nodes.find(node => node.selected);
+    console.log("Effect running. Found selected node:", currentlySelectedNode?.id);
+
+    if (currentlySelectedNode) {
+      // Update the selectedNodeId state
+      setSelectedNodeId(currentlySelectedNode.id);
+      console.log("Selected Node Object:", currentlySelectedNode);
+
+      // Update rename input
+      const currentLabel = currentlySelectedNode.data?.label || '';
+      console.log("Setting rename input to:", currentLabel);
+      setRenameInput(currentLabel);
+
+      // Update resize inputs only if it's a group
+      if (currentlySelectedNode.type === 'group') {
+        setSelectedNodeIsGroup(true);
+        setWidthInput(currentlySelectedNode.style?.width || '');
+        setHeightInput(currentlySelectedNode.style?.height || '');
+      } else {
+        setSelectedNodeIsGroup(false);
+        setWidthInput('');
+        setHeightInput('');
+      }
     } else {
+      console.log("No node selected in nodes array, clearing inputs.");
+      // Clear all inputs and selected ID if no node is selected
+      setSelectedNodeId(null); // Clear selected ID state
       setSelectedNodeIsGroup(false);
       setWidthInput('');
       setHeightInput('');
+      setRenameInput('');
     }
-  }, [selectedNode]); // Depend on the selected node object
+  // Depend directly on the nodes array. When it changes (e.g., selection updates), this effect runs.
+  }, [nodes]);
 
+
+  // Simplified onNodesChange - let applyNodeChanges handle selection flags
   const onNodesChange = useCallback(
     (changes) => {
-      // Update selected node ID based on selection changes
-      const selectionChange = changes.find(change => change.type === 'select');
-      if (selectionChange) {
-        // Find the node being selected/deselected
-        const node = nodes.find(n => n.id === selectionChange.id);
-        if (selectionChange.selected && node) {
-          setSelectedNodeId(node.id); // Set selected ID
-        } else if (!selectionChange.selected && selectedNodeId === selectionChange.id) {
-          // If the currently selected node is deselected, clear the ID
-          setSelectedNodeId(null);
-        }
-      }
+      console.log("onNodesChange received changes:", changes);
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
-    [setNodes, nodes, selectedNodeId], // Added selectedNodeId dependency
+    [setNodes] // No longer depends on nodes or selectedNodeId here
   );
 
   const onEdgesChange = useCallback(
@@ -92,8 +107,8 @@ function DesignWorkflows() {
       data: { label: 'New Parent' },
       position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 },
       style: {
-        width: 200,
-        height: 140,
+        width: 500,
+        height: 500,
         backgroundColor: 'rgba(0, 0, 255, 0.1)',
         border: '1px solid blue',
       },
@@ -104,14 +119,13 @@ function DesignWorkflows() {
       // Deselect all other nodes and add the new selected node
       nds.map(n => ({ ...n, selected: false })).concat(newNode)
     );
-    // Manually update the selectedNodeId state
-    setSelectedNodeId(newNodeId);
-  }, [setNodes, setSelectedNodeId]); // Add setSelectedNodeId dependency
+    // No need to manually set selectedNodeId here, useEffect will handle it
+  }, [setNodes]); // Removed setSelectedNodeId dependency
 
 
   // Modified function to add a child node inside the selected parent OR as an orphan
   const addChildNode = useCallback(() => {
-    const parentNode = nodes.find(node => node.id === selectedNodeId);
+    const parentNode = nodes.find(node => node.id === selectedNodeId); // Use selectedNodeId state here
     const newNodeId = getId();
     let newNode;
 
@@ -141,7 +155,7 @@ function DesignWorkflows() {
     }
 
     setNodes((nds) => nds.concat(newNode));
-  }, [selectedNodeId, nodes]); // Dependencies remain the same
+  }, [selectedNodeId, nodes, setNodes]); // Added setNodes dependency
 
 
   // Function to handle resizing the selected parent node
@@ -174,20 +188,59 @@ function DesignWorkflows() {
     );
   }, [selectedNodeId, selectedNodeIsGroup, widthInput, heightInput, setNodes]); // Corrected typo and added missing dependency
 
+  // Function to handle renaming the selected node
+  const handleRenameNode = useCallback(() => {
+    console.log(`Attempting to rename node ${selectedNodeId} to "${renameInput}"`);
+    if (!selectedNodeId) {
+        console.log("Rename failed: No node selected.");
+        return;
+    }
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === selectedNodeId) {
+          console.log("Found node to rename:", node);
+          // Create a new data object with the updated label
+          const updatedNode = {
+            ...node,
+            data: { ...node.data, label: renameInput },
+          };
+          console.log("Updated node data:", updatedNode);
+          return updatedNode;
+        }
+        return node;
+      })
+    );
+  }, [selectedNodeId, renameInput, setNodes]); // Add dependencies
+
 
   return (
     <div style={containerStyles} ref={reactFlowWrapper}>
       <div style={toolbarStyles}>
+        {/* Node Creation Buttons */}
         <button onClick={addParentNode} style={buttonStyles}>Add Parent Node</button>
-        {/* Updated button: Always enabled, text reflects dual purpose */}
         <button onClick={addChildNode} style={buttonStyles}>
            {selectedNodeId ? 'Add Child to Selected' : 'Add Node'}
         </button>
 
-        {/* Resize controls - visible only when a group node is selected */}
+        {/* Rename Controls - Visible when any node is selected */}
+        {selectedNodeId && (
+          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px' }}>
+            <span>Rename Node ({selectedNodeId}):</span>
+            <input
+              type="text"
+              value={renameInput}
+              onChange={(e) => setRenameInput(e.target.value)}
+              style={renameInputStyles}
+            />
+            <button onClick={handleRenameNode} style={{ marginLeft: '5px' }}>Apply Name</button>
+          </div>
+        )}
+
+        {/* Resize Controls - Visible only when a group node is selected */}
         {selectedNodeIsGroup && (
-          <>
-            <span style={{ marginLeft: '15px' }}>Resize Parent ({selectedNodeId}):</span>
+          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px' }}>
+            <span>Resize Parent:</span>
             <label> W:
               <input
                 type="number"
@@ -207,11 +260,11 @@ function DesignWorkflows() {
               />
             </label>
             <button onClick={handleParentResize}>Apply Size</button>
-          </>
+          </div>
         )}
-        {/* Updated status text */}
-        {!selectedNodeId && <span style={{ marginLeft: '15px', fontStyle: 'italic' }}>Select a node to add child inside it</span>}
-        {selectedNodeId && !selectedNodeIsGroup && <span style={{ marginLeft: '15px' }}>Selected: {selectedNodeId} (Not a Parent Group)</span>}
+
+        {/* Status Text */}
+        {!selectedNodeId && <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>Select a node to edit</span>}
 
       </div>
       <div style={flowStyles}>
