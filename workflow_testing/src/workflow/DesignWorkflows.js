@@ -49,11 +49,14 @@ const deleteButtonStyle = {
     cursor: 'pointer',
     marginLeft: '10px',
 };
+const connectionListStyle = { marginTop: '10px', borderTop: '1px solid #ddd', paddingTop: '10px' };
+const connectionItemStyle = { marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const connectionTextStyle = { fontSize: '12px', marginRight: '10px' };
 
 
 // Counter for unique node IDs - Start from 0 for empty canvas
 let idCounter = 0;
-const getId = () => `dndnode_${idCounter++}`;
+const getId = () => `Stage ${idCounter++}`;
 
 // Define the custom node types
 const nodeTypes = {
@@ -65,7 +68,7 @@ function DesignWorkflows() {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
-  const [selectedEdgeId, setSelectedEdgeId] = useState(null); // State for selected edge
+  const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false);
   const [widthInput, setWidthInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
@@ -153,7 +156,7 @@ function DesignWorkflows() {
     const newNode = {
       id: newNodeId,
       type: 'group', // This now refers to our CustomGroupNode via nodeTypes
-      data: { label: 'New Parent' },
+      data: { label: 'New Stage' },
       position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 },
       style: {
         width: 500,
@@ -188,7 +191,7 @@ function DesignWorkflows() {
 
       newNode = {
         id: newNodeId,
-        data: { label: `Child of ${parentNode.id}` },
+        data: { label: `Task of ${parentNode.id}` },
         position: { x: childX, y: childY },
         parentId: parentNode.id,
         extent: 'parent', // Keep it within the parent bounds
@@ -289,18 +292,22 @@ function DesignWorkflows() {
 
   }, [selectedNodeId, setNodes, setEdges]);
 
-  // Function to handle deleting the selected edge
+  // Function to handle deleting the selected edge (from direct selection)
   const handleDeleteEdge = useCallback(() => {
-    if (!selectedEdgeId) {
-      console.log("Delete failed: No edge selected.");
-      return;
-    }
-    console.log(`Attempting to delete edge ${selectedEdgeId}`);
+    if (!selectedEdgeId) return;
     setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdgeId));
-    // Clear selection state manually since the edge is gone
-    // useEffect will handle clearing inputs based on state change
     setSelectedEdgeId(null);
   }, [selectedEdgeId, setEdges]);
+
+  // Function to delete a specific edge by ID (called from node's connection list)
+  const handleDeleteSpecificEdge = useCallback((edgeIdToDelete) => {
+    console.log(`Attempting to delete specific edge ${edgeIdToDelete}`);
+    setEdges((eds) => eds.filter((edge) => edge.id !== edgeIdToDelete));
+    // If the currently selected edge is the one being deleted, clear selection
+    if (selectedEdgeId === edgeIdToDelete) {
+        setSelectedEdgeId(null);
+    }
+  }, [selectedEdgeId, setEdges]); // Added selectedEdgeId dependency
 
 
   // Function to handle saving the workflow with specific data structure
@@ -377,6 +384,15 @@ function DesignWorkflows() {
   }, [nodes]); // Re-sort only when nodes array changes
 
 
+  // Find connections for the selected node (if it's not a group)
+  const selectedNodeConnections = useMemo(() => {
+    if (!selectedNodeId || selectedNodeIsGroup) {
+      return [];
+    }
+    return edges.filter(edge => edge.source === selectedNodeId || edge.target === selectedNodeId);
+  }, [selectedNodeId, selectedNodeIsGroup, edges]);
+
+
   return (
     <div style={containerStyles} ref={reactFlowWrapper}>
       <div style={toolbarStyles}>
@@ -388,53 +404,81 @@ function DesignWorkflows() {
 
         {/* Edit Controls Container - Visible when any node is selected */}
         {selectedNodeId && (
-          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* Rename Controls */}
-            <div>
-              <span>Rename Node ({selectedNodeId}):</span>
-              <input
-                type="text"
-                value={renameInput}
-                onChange={(e) => setRenameInput(e.target.value)}
-                style={renameInputStyles}
-              />
-              <button onClick={handleRenameNode} style={{ marginLeft: '5px' }}>Apply Name</button>
+          <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}> {/* Changed layout to column */}
+            {/* Top Row: Rename, Resize, Delete Node */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Rename Controls */}
+              <div>
+                <span>Rename Node ({selectedNodeId}):</span>
+                <input
+                  type="text"
+                  value={renameInput}
+                  onChange={(e) => setRenameInput(e.target.value)}
+                  style={renameInputStyles}
+                />
+                <button onClick={handleRenameNode} style={{ marginLeft: '5px' }}>Apply Name</button>
+              </div>
+
+              {/* Resize Controls - Visible only when a group node is selected */}
+              {selectedNodeIsGroup && (
+                <div>
+                  <span>Resize Parent:</span>
+                  <label> W:
+                    <input
+                      type="number"
+                      value={widthInput}
+                      onChange={(e) => setWidthInput(e.target.value)}
+                      style={inputStyles}
+                      min="10"
+                    />
+                  </label>
+                  <label> H:
+                    <input
+                      type="number"
+                      value={heightInput}
+                      onChange={(e) => setHeightInput(e.target.value)}
+                      style={inputStyles}
+                      min="10"
+                    />
+                  </label>
+                  <button onClick={handleParentResize} style={{ marginLeft: '5px' }}>Apply Size</button>
+                </div>
+              )}
+
+              {/* Delete Node Button */}
+              <button onClick={handleDeleteNode} style={deleteButtonStyle}>
+                Delete Node
+              </button>
             </div>
 
-            {/* Resize Controls - Visible only when a group node is selected */}
-            {selectedNodeIsGroup && (
-              <div>
-                <span>Resize Parent:</span>
-                <label> W:
-                  <input
-                    type="number"
-                    value={widthInput}
-                    onChange={(e) => setWidthInput(e.target.value)}
-                    style={inputStyles}
-                    min="10"
-                  />
-                </label>
-                <label> H:
-                  <input
-                    type="number"
-                    value={heightInput}
-                    onChange={(e) => setHeightInput(e.target.value)}
-                    style={inputStyles}
-                    min="10"
-                  />
-                </label>
-                <button onClick={handleParentResize} style={{ marginLeft: '5px' }}>Apply Size</button>
+            {/* Connections List - Visible only when a non-group node is selected */}
+            {!selectedNodeIsGroup && selectedNodeConnections.length > 0 && (
+              <div style={connectionListStyle}>
+                <strong>Connections:</strong>
+                {selectedNodeConnections.map(edge => (
+                  <div key={edge.id} style={connectionItemStyle}>
+                    <span style={connectionTextStyle}>
+                      {edge.source === selectedNodeId ? `➡️ To: ${edge.target}` : `⬅️ From: ${edge.source}`}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteSpecificEdge(edge.id)}
+                      style={{ ...deleteButtonStyle, marginLeft: 'auto', padding: '2px 5px', fontSize: '10px' }} // Smaller delete button
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
-
-            {/* Delete Node Button */}
-            <button onClick={handleDeleteNode} style={deleteButtonStyle}>
-              Delete Node
-            </button>
+             {!selectedNodeIsGroup && selectedNodeConnections.length === 0 && (
+                 <div style={connectionListStyle}>
+                    <span style={{fontSize: '12px', fontStyle: 'italic'}}>No connections</span>
+                 </div>
+             )}
           </div>
         )}
 
-        {/* Delete Edge Control - Visible when an edge is selected */}
+        {/* Delete Edge Control - Visible when an edge is directly selected */}
         {selectedEdgeId && (
            <div style={{ borderLeft: '2px solid #ccc', paddingLeft: '10px', marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
              <span>Selected Connection: {selectedEdgeId}</span>
