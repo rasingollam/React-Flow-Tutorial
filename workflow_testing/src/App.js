@@ -7,9 +7,8 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Welcome to the Workflow App</h1>
-        <p>This is the main page.</p>
         <Link to="/design">
-          <button>Go to Design Workflows</button>
+          <button className="modern-button">Go to Design Workflows</button> {/* Added className */}
         </Link>
       </header>
     </div>

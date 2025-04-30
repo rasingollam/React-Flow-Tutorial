@@ -36,3 +36,32 @@
     transform: rotate(360deg);
   }
 }
+
+/* Style for the specific button */
+.modern-button {
+  display: inline-block; /* Ensure padding and margins work correctly */
+  padding: 10px 20px; /* Comfortable padding */
+  border: none; /* Remove default border */
+  border-radius: 5px; /* Slightly rounded corners */
+  background-color: #007bff; /* Primary blue color */
+  color: white; /* White text */
+  font-size: 1rem; /* Standard font size */
+  font-weight: 500; /* Medium weight */
+  text-align: center;
+  text-decoration: none; /* Remove underline if it's inside a link */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease, box-shadow 0.2s ease; /* Smooth transitions */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+.modern-button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Slightly larger shadow on hover */
+  transform: translateY(-1px); /* Slight lift effect */
+}
+
+.modern-button:active {
+  background-color: #004085; /* Even darker blue when pressed */
+  transform: translateY(0); /* Reset lift effect */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* Smaller shadow when pressed */
+}
