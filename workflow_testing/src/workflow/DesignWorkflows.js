@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'; // Added useMemo
 import {
   ReactFlow,
   addEdge,
@@ -11,6 +11,7 @@ import '@xyflow/react/dist/style.css';
 
 import { initialNodes } from './nodes';
 import { initialEdges } from './edges';
+import CustomGroupNode from './CustomGroupNode'; // Import the custom group node
 
 // Basic styling for the container and toolbar
 const containerStyles = { height: '100vh', width: '100%', display: 'flex', flexDirection: 'column' };
@@ -27,12 +28,17 @@ const rfStyle = {
 let idCounter = 0;
 const getId = () => `dndnode_${idCounter++}`;
 
+// Define the custom node types
+const nodeTypes = {
+  group: CustomGroupNode, // Register the custom group node
+  // Add other custom node types here if needed
+};
 
 function DesignWorkflows() {
   // Initialize with empty arrays from imported files
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-  const [selectedNodeId, setSelectedNodeId] = useState(null); // Still useful for UI logic
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedNodeIsGroup, setSelectedNodeIsGroup] = useState(false);
   const [widthInput, setWidthInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
@@ -56,7 +62,7 @@ function DesignWorkflows() {
       console.log("Setting rename input to:", currentLabel);
       setRenameInput(currentLabel);
 
-      // Update resize inputs only if it's a group
+      // Check if it's our custom group type (or potentially default 'group' if needed)
       if (currentlySelectedNode.type === 'group') {
         setSelectedNodeIsGroup(true);
         setWidthInput(currentlySelectedNode.style?.width || '');
@@ -98,19 +104,20 @@ function DesignWorkflows() {
   );
 
 
-  // Function to add a new parent node and select it
+  // Function to add a new parent node using the custom type
   const addParentNode = useCallback(() => {
     const newNodeId = getId();
     const newNode = {
       id: newNodeId,
-      type: 'group',
+      type: 'group', // This now refers to our CustomGroupNode via nodeTypes
       data: { label: 'New Parent' },
       position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 },
       style: {
         width: 500,
         height: 500,
         backgroundColor: 'rgba(0, 0, 255, 0.1)',
-        border: '1px solid blue',
+        // Border is now handled by CustomGroupNode, but can be overridden here
+        // border: '1px solid blue',
       },
       selected: true, // Mark the new node as selected
     };
@@ -120,7 +127,7 @@ function DesignWorkflows() {
       nds.map(n => ({ ...n, selected: false })).concat(newNode)
     );
     // No need to manually set selectedNodeId here, useEffect will handle it
-  }, [setNodes]); // Removed setSelectedNodeId dependency
+  }, [setNodes]);
 
 
   // Modified function to add a child node inside the selected parent OR as an orphan
@@ -155,7 +162,7 @@ function DesignWorkflows() {
     }
 
     setNodes((nds) => nds.concat(newNode));
-  }, [selectedNodeId, nodes, setNodes]); // Added setNodes dependency
+  }, [selectedNodeId, nodes, setNodes]);
 
 
   // Function to handle resizing the selected parent node
@@ -274,6 +281,7 @@ function DesignWorkflows() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          nodeTypes={nodeTypes} // Pass the custom node types object
           fitView
           style={rfStyle}
           attributionPosition="bottom-right"
