@@ -5,8 +5,8 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   Background,
-  Controls, // Re-import Controls if it was removed
-  useReactFlow,
+  Controls,
+  useReactFlow, // Ensure useReactFlow is imported
   ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -68,8 +68,9 @@ function DesignWorkflows() {
   const [edges, setEdges] = useState([]);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(true); // State for panel visibility
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
   const reactFlowWrapper = useRef(null);
+  const { getViewport } = useReactFlow(); // Get getViewport function
 
   // Effect to update selected IDs based on nodes/edges state
   useEffect(() => {
@@ -178,23 +179,45 @@ function DesignWorkflows() {
 
   // --- Save Callback ---
   const handleSave = useCallback(() => {
-    // ... (keep existing save logic) ...
-    const parentNodesData = [];
-    const childNodesData = [];
-    nodes.forEach(node => {
-      if (node.type === 'group') {
-        parentNodesData.push({ id: node.id, label: node.data?.label || '' });
-      } else {
-        const connectedEdges = edges.filter(edge => edge.source === node.id || edge.target === node.id);
-        const sources = connectedEdges.filter(e => e.target === node.id).map(e => e.source);
-        const targets = connectedEdges.filter(e => e.source === node.id).map(e => e.target);
-        childNodesData.push({ id: node.id, label: node.data?.label || '', parentNode: node.parentId || null, connections: { sources, targets } });
-      }
-    });
-    const structuredData = { parentNodes: parentNodesData, childNodes: childNodesData };
-    console.log("Saving Structured Workflow Data:", JSON.stringify(structuredData, null, 2));
-    alert("Structured workflow data logged to console.");
-  }, [nodes, edges]);
+    // Get current nodes, edges, and viewport
+    const currentNodes = nodes; // Or use getNodes() from useReactFlow if preferred
+    const currentEdges = edges; // Or use getEdges() from useReactFlow if preferred
+    const currentViewport = getViewport();
+
+    // Combine into a single object
+    const flowData = {
+      nodes: currentNodes,
+      edges: currentEdges,
+      viewport: currentViewport,
+    };
+
+    // Convert to JSON string
+    const jsonString = JSON.stringify(flowData, null, 2); // Pretty print JSON
+
+    // Create a Blob
+    const blob = new Blob([jsonString], { type: 'application/json' });
+
+    // Create an object URL
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'workflow.json'; // Set the desired filename
+
+    // Append to the document, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Revoke the object URL to free memory
+    URL.revokeObjectURL(url);
+
+    console.log("Workflow saved as workflow.json");
+    // Optional: Show a confirmation message to the user
+    // alert("Workflow saved as workflow.json");
+
+  }, [nodes, edges, getViewport]);
 
 
   // --- Memos for Derived Data (passed to ControlPanel) ---
@@ -232,7 +255,7 @@ function DesignWorkflows() {
           onAddParentNode={addParentNode}
           onAddChildNode={addChildNode}
           selectedNodeId={selectedNodeId}
-          onSaveWorkflow={handleSave}
+          onSaveWorkflow={handleSave} // Pass updated save handler
           isPanelOpen={isPanelOpen} // Pass panel state
           onToggleSidebar={togglePanel} // Pass toggle function
         />
