@@ -1,9 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import BpmnJS from 'bpmn-js/lib/Modeler';
 
+// Import our new custom properties panel
+import CustomBpmnPropertiesPanel from './CustomBpmnPropertiesPanel'; // Import the new panel
+
 // Import BPMN-JS CSS files
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css';
+// NOTE: The import for 'bpmn-js-properties-panel.css' is no longer needed and was previously commented out.
+// We are also no longer importing BpmnPropertiesPanelModule, BpmnPropertiesProviderModule, or CustomPropertiesProvider.
 
 // A default empty diagram
 const emptyBpmnDiagram = `<?xml version="1.0" encoding="UTF-8"?>
@@ -20,17 +25,27 @@ const emptyBpmnDiagram = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>`;
 
-const modelerContainerStyle = {
-  height: 'calc(100vh - 100px)', // Adjust based on your layout, assuming some header/footer space
+const containerStyle = { // Style for the overall container including properties panel
+  display: 'flex',
+  height: 'calc(100vh - 100px)', // Adjust as needed
   width: '100%',
-  border: '1px solid #ccc',
+};
+
+const modelerContainerStyle = { // Style for the diagram canvas
+  flexGrow: 1, // Canvas takes available space
+  height: '100%',
+  // borderRight: '1px solid #ccc', // No longer needed if panel is separate or styled differently
   backgroundColor: '#fff',
 };
 
+// propertiesPanelContainerStyle is no longer needed as we have a new custom panel component
+
 const BpmnModelerComponent = () => {
   const modelerRef = useRef(null);
+  // propertiesPanelRef is no longer needed
   const bpmnModelerInstance = useRef(null);
   const [error, setError] = useState(null);
+  const [selectedElement, setSelectedElement] = useState(null); // State for the selected element
 
   useEffect(() => {
     if (!modelerRef.current) {
@@ -40,8 +55,29 @@ const BpmnModelerComponent = () => {
     // Initialize BpmnJS modeler
     bpmnModelerInstance.current = new BpmnJS({
       container: modelerRef.current,
+      // propertiesPanel: { // This configuration is removed
+      //   parent: propertiesPanelRef.current
+      // },
+      // additionalModules: [ // These are removed as we are not using the default properties panel
+      //   BpmnPropertiesPanelModule,
+      //   BpmnPropertiesProviderModule,
+      //   { __init__: ['customPropertiesProvider'], customPropertiesProvider: ['type', CustomPropertiesProvider] }
+      // ],
       keyboard: {
         bindTo: window
+      }
+    });
+
+    // Listen for selection changes
+    const eventBus = bpmnModelerInstance.current.get('eventBus');
+    eventBus.on('selection.changed', (context) => {
+      const { newSelection } = context;
+      if (newSelection && newSelection.length > 0) {
+        setSelectedElement(newSelection[0]); // Assuming single selection
+        console.log('Selected element:', newSelection[0]);
+      } else {
+        setSelectedElement(null);
+        console.log('Selection cleared');
       }
     });
 
@@ -90,15 +126,17 @@ const BpmnModelerComponent = () => {
   // };
 
   return (
-    <>
-      {error && <div style={{ color: 'red', padding: '10px' }}>Error: {error}</div>}
+    <div style={containerStyle}>
+      {error && <div style={{ color: 'red', padding: '10px', position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: 'lightpink', zIndex: 100 }}>Error: {error}</div>}
       <div ref={modelerRef} style={modelerContainerStyle}></div>
+      {/* Render our new custom properties panel */}
+      <CustomBpmnPropertiesPanel selectedElement={selectedElement} />
       {/* Example Save Button:
       <button onClick={saveDiagram} style={{ margin: '10px', padding: '8px 15px' }}>
         Save BPMN Diagram
       </button>
       */}
-    </>
+    </div>
   );
 };
 
