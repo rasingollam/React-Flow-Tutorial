@@ -120,7 +120,7 @@ const bpmnElementTypes = [
   // Add more types as you see fit
 ];
 
-const attributeDataTypes = ['text', 'number', 'date', 'boolean', 'url'];
+const attributeDataTypes = ['text', 'number', 'date', 'boolean', 'url', 'email', 'document'];
 
 const SchemaDefinitionModal = ({ isOpen, onClose, currentSchemas, onSaveSchemas }) => {
   const [selectedElementType, setSelectedElementType] = useState(bpmnElementTypes[0]);
@@ -141,6 +141,12 @@ const SchemaDefinitionModal = ({ isOpen, onClose, currentSchemas, onSaveSchemas 
       alert('Attribute Name and Label are required.');
       return;
     }
+    // Ensure attribute name is a valid JS identifier (simple check)
+    if (!/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(newAttrName.trim())) {
+        alert('Attribute Name must be a valid identifier (e.g., myVariable, task_Priority). No spaces or special characters other than _ or $.');
+        return;
+    }
+
     const newAttribute = {
       name: newAttrName.trim(),
       label: newAttrLabel.trim(),

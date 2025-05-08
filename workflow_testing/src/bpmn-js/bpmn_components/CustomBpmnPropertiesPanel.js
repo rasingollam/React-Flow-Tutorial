@@ -51,12 +51,14 @@ const buttonStyle = {
 // Helper to get a default value based on type, useful for initialization
 const getDefaultValueForType = (type) => {
   switch (type) {
-    case 'text': // Changed from 'string' to 'text' for consistency
-    case 'url':  // Added url to default to empty string
+    case 'text':
+    case 'url':
     case 'date':
+    case 'email': // Add email
+    case 'document': // Add document
       return '';
     case 'number':
-      return ''; // Default number to empty string for input, parse on change/save
+      return '';
     case 'boolean':
       return false;
     default:
@@ -80,7 +82,12 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
         const existingValue = bo.get(attrDef.name);
         if (attrDef.type === 'boolean') {
           initialValues[attrDef.name] = existingValue !== undefined ? !!existingValue : getDefaultValueForType(attrDef.type);
-        } else {
+        } else if (attrDef.type === 'document') {
+          // For document, we store the filename. If a file was previously "set",
+          // we might just have its name. For simplicity, default to empty.
+          initialValues[attrDef.name] = existingValue !== undefined ? String(existingValue) : getDefaultValueForType(attrDef.type);
+        }
+        else {
           initialValues[attrDef.name] = existingValue !== undefined ? existingValue : getDefaultValueForType(attrDef.type);
         }
       });
@@ -93,11 +100,20 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
   }, [selectedElement, attributeSchemas]);
 
   const handleCustomFieldChange = (fieldName, value, type) => {
+    // For file inputs, the value is e.target.files[0].name or similar
+    // For now, we'll just store the value directly.
+    // If it's a file input, 'value' will be the file path (fakepath) or filename.
+    let processedValue = value;
+    if (type === 'document' && value instanceof FileList && value.length > 0) {
+        processedValue = value[0].name; // Store only the name of the first file
+    } else if (type === 'document' && typeof value === 'string' && value.startsWith('C:\\fakepath\\')) {
+        processedValue = value.substring(12); // Get filename from fakepath
+    }
+
+
     setCustomFieldValues(prevValues => ({
       ...prevValues,
-      // For boolean, the value is already e.target.checked (true/false)
-      // For number, store as string from input, parse on apply
-      [fieldName]: value,
+      [fieldName]: processedValue,
     }));
   };
 
@@ -111,10 +127,13 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
           const numValue = parseFloat(value);
           value = isNaN(numValue) ? undefined : numValue;
         } else if (attrDef.type === 'boolean') {
-          value = !!value; // Ensure it's a boolean
-        } else if (value === '' && (attrDef.type === 'text' || attrDef.type === 'date' || attrDef.type === 'url')) {
-          value = undefined; // Set to undefined to remove attribute if empty string
+          value = !!value;
+        } else if (value === '' && (attrDef.type === 'text' || attrDef.type === 'date' || attrDef.type === 'url' || attrDef.type === 'email' || attrDef.type === 'document')) {
+          // Also clear document if empty string (meaning no file selected or cleared)
+          value = undefined;
         }
+        // For 'document' type, 'value' here would be the filename string.
+        // Actual file upload handling would be more complex.
         propertiesToUpdate[attrDef.name] = value;
       });
       onUpdateCustomProperties(selectedElement, propertiesToUpdate);
@@ -154,6 +173,32 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
                   checked={!!customFieldValues[attrDef.name]} // Ensure it's a boolean for checked prop
                   onChange={(e) => handleCustomFieldChange(attrDef.name, e.target.checked, 'boolean')}
                 />
+              ) : attrDef.type === 'email' ? (
+                <input
+                  id={attrDef.name}
+                  type="email" // Specific type for email
+                  style={inputStyle}
+                  value={customFieldValues[attrDef.name] === undefined ? '' : String(customFieldValues[attrDef.name])}
+                  onChange={(e) => handleCustomFieldChange(attrDef.name, e.target.value, attrDef.type)}
+                  placeholder={attrDef.placeholder || 'example@example.com'}
+                />
+              ) : attrDef.type === 'document' ? (
+                <>
+                  <input
+                    id={attrDef.name}
+                    type="file" // Specific type for document upload
+                    style={{...inputStyle, padding: '3px'}} // Adjust padding for file input
+                    // Do not set 'value' for input type="file" programmatically for security reasons
+                    // It can only be set by user interaction or be empty.
+                    onChange={(e) => handleCustomFieldChange(attrDef.name, e.target.files, attrDef.type)}
+                    // placeholder={attrDef.placeholder || ''} // Placeholder not very useful for file
+                  />
+                  {customFieldValues[attrDef.name] && (
+                    <span style={{ fontSize: '12px', color: '#555', display: 'block', marginTop: '4px' }}>
+                      Selected: {String(customFieldValues[attrDef.name])}
+                    </span>
+                  )}
+                </>
               ) : (
                 <input
                   id={attrDef.name}
