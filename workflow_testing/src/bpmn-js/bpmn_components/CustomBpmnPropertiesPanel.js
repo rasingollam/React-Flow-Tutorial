@@ -48,6 +48,22 @@ const buttonStyle = {
   marginTop: '10px',
 };
 
+// It's crucial that this list is consistent with the one in SchemaDefinitionModal.js
+// Ideally, this would be imported from a shared constants file.
+const RESERVED_BPMN_ATTRIBUTE_NAMES = [
+  'id', 'name', 'documentation', 'processRef', 'isExecutable',
+  'sourceRef', 'targetRef', 'conditionExpression', 'default',
+  'itemSubjectRef', 'loopCharacteristics', 'isForCompensation',
+  'triggeredByEvent', 'cancelActivity', 'attachedToRef',
+  'eventDefinitions', 'eventGatewayType', 'gatewayDirection',
+  'implementation', 'operationRef', 'messageRef', 'script', 'scriptFormat',
+  'assignee', 'candidateUsers', 'candidateGroups', 'dueDate', 'followUpDate', 'priority',
+  'extensionElements', 'di', '$type', '$parent', 'businessObject',
+  'flowElements', 'laneSets', 'lanes', 'participants', 'artifacts',
+  'get', 'set', 'getDescr', '$model', '$descriptor'
+  // Add any other critical attributes you identify
+];
+
 // Helper to get a default value based on type, useful for initialization
 const getDefaultValueForType = (type) => {
   switch (type) {
@@ -74,10 +90,14 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
     if (selectedElement && selectedElement.businessObject && attributeSchemas) {
       const bo = selectedElement.businessObject;
       const elementType = bo.$type;
-      const schemaForElement = attributeSchemas[elementType] || [];
+      // Filter out any schema definitions that use reserved names
+      const schemaForElement = (attributeSchemas[elementType] || []).filter(
+        attrDef => !RESERVED_BPMN_ATTRIBUTE_NAMES.includes(attrDef.name.toLowerCase())
+      );
       setCurrentSchema(schemaForElement);
 
       const initialValues = {};
+      // Only process non-reserved attributes
       schemaForElement.forEach(attrDef => {
         const existingValue = bo.get(attrDef.name);
         if (attrDef.type === 'boolean') {
@@ -120,6 +140,7 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
   const handleApplyCustomProperties = () => {
     if (selectedElement && onUpdateCustomProperties && currentSchema.length > 0) {
       const propertiesToUpdate = {};
+      // currentSchema is already filtered, so we only iterate over valid custom attributes
       currentSchema.forEach(attrDef => {
         let value = customFieldValues[attrDef.name];
 
@@ -136,7 +157,12 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
         // Actual file upload handling would be more complex.
         propertiesToUpdate[attrDef.name] = value;
       });
-      onUpdateCustomProperties(selectedElement, propertiesToUpdate);
+      // Only proceed if there are actual properties to update
+      if (Object.keys(propertiesToUpdate).length > 0) {
+        onUpdateCustomProperties(selectedElement, propertiesToUpdate);
+      } else {
+        console.log("No valid custom properties to update after filtering reserved names.");
+      }
     }
   };
 
@@ -151,16 +177,17 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
   const { businessObject } = selectedElement;
 
   const excludeProperties = ['$type', 'extensionElements', 'di', '$parent', 'flowElements', 'artifacts', 'lanes', 'participants'];
+  // Also exclude properties that are managed as custom (even if filtered, good for standard display)
+  const customAttributeNames = currentSchema.map(attr => attr.name);
 
   return (
     <div style={panelStyle}>
       <h3>Properties for: {businessObject.id || businessObject.name || businessObject.$type}</h3>
 
       {/* Dynamically Rendered Custom Fields Section */}
-      {/* The conditional rendering is now based on currentSchema.length > 0 */}
+      {/* currentSchema is already filtered, so this renders only valid custom fields */}
       {currentSchema.length > 0 && (
         <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #ddd' }}>
-          {/* Dynamic heading based on the element type */}
           <h4>Custom Attributes for {businessObject.$type}</h4>
           {currentSchema.map((attrDef) => (
             <div key={attrDef.name} style={{ marginBottom: '12px' }}>
@@ -223,7 +250,7 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdate
 
       <h4 style={{ marginTop: '20px' }}>Standard Attributes:</h4>
       {Object.entries(businessObject)
-        .filter(([key]) => !excludeProperties.includes(key) && !key.startsWith('$'))
+        .filter(([key]) => !excludeProperties.includes(key) && !key.startsWith('$') && !customAttributeNames.includes(key) && !RESERVED_BPMN_ATTRIBUTE_NAMES.includes(key.toLowerCase()))
         .map(([key, value]) => {
           let displayValue = value;
           if (typeof value === 'object' && value !== null) {

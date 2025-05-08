@@ -122,6 +122,22 @@ const bpmnElementTypes = [
 
 const attributeDataTypes = ['text', 'number', 'date', 'boolean', 'url', 'email', 'document'];
 
+// List of common/critical BPMN attribute names that should not be used for custom attributes
+// This list can be expanded based on the BPMN elements and their properties.
+const RESERVED_ATTRIBUTE_NAMES = [
+  'id', 'name', 'documentation', 'processRef', 'isExecutable',
+  'sourceRef', 'targetRef', 'conditionExpression', 'default',
+  'itemSubjectRef', 'loopCharacteristics', 'isForCompensation',
+  'triggeredByEvent', 'cancelActivity', 'attachedToRef',
+  'eventDefinitions', 'eventGatewayType', 'gatewayDirection',
+  'implementation', 'operationRef', 'messageRef', 'script', 'scriptFormat',
+  'assignee', 'candidateUsers', 'candidateGroups', 'dueDate', 'followUpDate', 'priority', // Common task attributes
+  'extensionElements', 'di', '$type', '$parent', 'businessObject',
+  'flowElements', 'laneSets', 'lanes', 'participants', 'artifacts',
+  // Properties often found directly on businessObject that might cause issues if overridden
+  'get', 'set', 'getDescr', '$model', '$descriptor' 
+];
+
 const SchemaDefinitionModal = ({ isOpen, onClose, currentSchemas, onSaveSchemas }) => {
   const [selectedElementType, setSelectedElementType] = useState(bpmnElementTypes[0]);
   const [attributesForType, setAttributesForType] = useState([]);
@@ -137,19 +153,32 @@ const SchemaDefinitionModal = ({ isOpen, onClose, currentSchemas, onSaveSchemas 
   }, [isOpen, selectedElementType, currentSchemas]);
 
   const handleAddAttribute = () => {
-    if (!newAttrName.trim() || !newAttrLabel.trim()) {
+    const trimmedName = newAttrName.trim();
+    const trimmedLabel = newAttrLabel.trim();
+
+    if (!trimmedName || !trimmedLabel) {
       alert('Attribute Name and Label are required.');
       return;
     }
-    // Ensure attribute name is a valid JS identifier (simple check)
-    if (!/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(newAttrName.trim())) {
-        alert('Attribute Name must be a valid identifier (e.g., myVariable, task_Priority). No spaces or special characters other than _ or $.');
+    if (!/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(trimmedName)) {
+        alert('Attribute Name must be a valid identifier (e.g., myVariable, task_Priority). It should start with a letter, underscore, or dollar sign, followed by letters, numbers, underscores, or dollar signs. No spaces or other special characters.');
         return;
     }
 
+    if (RESERVED_ATTRIBUTE_NAMES.includes(trimmedName.toLowerCase())) {
+      alert(`The attribute name "${trimmedName}" is a reserved BPMN property name or a common system property. Please choose a different name to avoid conflicts.`);
+      return;
+    }
+
+    // Check if attribute name already exists for this type
+    if (attributesForType.some(attr => attr.name === trimmedName)) {
+      alert(`An attribute with the name "${trimmedName}" already exists for ${selectedElementType}. Please choose a unique name.`);
+      return;
+    }
+
     const newAttribute = {
-      name: newAttrName.trim(),
-      label: newAttrLabel.trim(),
+      name: trimmedName,
+      label: trimmedLabel,
       type: newAttrType,
       placeholder: newAttrPlaceholder.trim() || undefined,
     };
