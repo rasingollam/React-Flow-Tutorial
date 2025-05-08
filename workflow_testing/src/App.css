@@ -65,3 +65,9 @@
   transform: translateY(0); /* Reset lift effect */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* Smaller shadow when pressed */
 }
+
+.app-nav { /* Style for the navigation button container */
+  display: flex;
+  gap: 20px; /* Space between buttons */
+  margin-top: 20px;
+}
