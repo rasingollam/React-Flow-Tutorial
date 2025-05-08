@@ -58,6 +58,7 @@ const BpmnModelerComponent = () => {
   const [error, setError] = useState(null);
   const [selectedElement, setSelectedElement] = useState(null);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false); // State for modal
+  const fileInputRef = useRef(null); // Ref for the hidden file input
 
   // Define schemas for custom attributes - initially empty, user defines via modal
   const [attributeSchemas, setAttributeSchemas] = useState({});
@@ -95,8 +96,8 @@ const BpmnModelerComponent = () => {
       }
     });
 
-    // Function to load a diagram
-    const loadDiagram = async (xml) => {
+    // Function to load a diagram (XML only)
+    const loadDiagramXml = async (xml) => {
       try {
         await bpmnModelerInstance.current.importXML(xml);
         const canvas = bpmnModelerInstance.current.get('canvas');
@@ -109,7 +110,7 @@ const BpmnModelerComponent = () => {
     };
 
     // Load the default empty diagram
-    loadDiagram(emptyBpmnDiagram);
+    loadDiagramXml(emptyBpmnDiagram);
 
     // Cleanup on component unmount
     return () => {
@@ -158,17 +159,70 @@ const BpmnModelerComponent = () => {
     if (bpmnModelerInstance.current) {
       try {
         const { xml } = await bpmnModelerInstance.current.saveXML({ format: true });
-        console.log('Saved BPMN XML:', xml);
-        // Here you can trigger a download or send to a server
-        const encodedData = encodeURIComponent(xml);
+        
+        const workflowData = {
+          bpmnXml: xml,
+          attributeSchemas: attributeSchemas 
+        };
+
+        const jsonString = JSON.stringify(workflowData, null, 2);
+        const encodedData = encodeURIComponent(jsonString);
         const link = document.createElement('a');
-        link.setAttribute('href', 'data:application/bpmn20-xml;charset=UTF-8,' + encodedData);
-        link.setAttribute('download', 'diagram.bpmn');
+        link.setAttribute('href', 'data:application/json;charset=UTF-8,' + encodedData);
+        link.setAttribute('download', 'workflow_with_attributes.bpmn.json'); // New file extension
         link.click();
+        console.log('Saved BPMN XML and Schemas:', workflowData);
       } catch (err) {
-        console.error('Error saving BPMN XML:', err);
-        setError(err.message || 'Failed to save BPMN diagram.');
+        console.error('Error saving BPMN XML and Schemas:', err);
+        setError(err.message || 'Failed to save BPMN diagram and schemas.');
       }
+    }
+  };
+
+  const handleFileImport = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const fileContent = e.target.result;
+          const importedData = JSON.parse(fileContent);
+
+          if (importedData && typeof importedData.bpmnXml === 'string' && typeof importedData.attributeSchemas === 'object') {
+            // Load BPMN XML
+            await bpmnModelerInstance.current.importXML(importedData.bpmnXml);
+            const canvas = bpmnModelerInstance.current.get('canvas');
+            canvas.zoom('fit-viewport');
+            
+            // Update attribute schemas
+            setAttributeSchemas(importedData.attributeSchemas);
+            
+            setError(null);
+            console.log("Workflow and schemas imported successfully.");
+          } else {
+            throw new Error("Invalid file format. Expected JSON with bpmnXml and attributeSchemas.");
+          }
+        } catch (err) {
+          console.error('Error importing workflow file:', err);
+          setError(err.message || 'Failed to import workflow file.');
+          alert(`Error: ${err.message}`);
+        }
+      };
+      reader.onerror = () => {
+        setError('Failed to read the imported file.');
+        alert('Error: Failed to read the imported file.');
+      };
+      reader.readAsText(file);
+    }
+    // Reset file input to allow importing the same file again if needed
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
+  const triggerFileImport = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -195,9 +249,24 @@ const BpmnModelerComponent = () => {
         currentSchemas={attributeSchemas}
         onSaveSchemas={handleSaveSchemas}
       />
-      {/* Example Save Button: */}
-      <button onClick={saveDiagram} style={{ position: 'absolute', top: '10px', right: '230px', zIndex: 10, padding: '8px 15px' }}> {/* Adjusted right position */}
-        Save BPMN Diagram
+      {/* Hidden file input for import */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        onChange={handleFileImport}
+        accept=".bpmn.json,application/json" // Specify accepted file types
+      />
+      {/* Import Button */}
+      <button 
+        onClick={triggerFileImport} 
+        style={{ position: 'absolute', top: '10px', right: '400px', zIndex: 10, padding: '8px 15px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+      >
+        Import Diagram & Attributes
+      </button>
+      {/* Save Button: */}
+      <button onClick={saveDiagram} style={{ position: 'absolute', top: '10px', right: '230px', zIndex: 10, padding: '8px 15px' }}>
+        Save Diagram & Attributes
       </button>
     </div>
   );
