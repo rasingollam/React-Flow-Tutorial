@@ -80,6 +80,13 @@ const BpmnModelerComponent = () => {
         console.log('Selection cleared');
       }
     });
+    eventBus.on('element.changed', (event) => {
+      // If the selected element changed, refresh its state to update the panel
+      if (selectedElement && event.element.id === selectedElement.id) {
+        // Create a new object reference to trigger re-render in CustomBpmnPropertiesPanel
+        setSelectedElement({ ...event.element });
+      }
+    });
 
     // Function to load a diagram
     const loadDiagram = async (xml) => {
@@ -106,6 +113,34 @@ const BpmnModelerComponent = () => {
     };
   }, []); // Empty dependency array to run only on mount and unmount
 
+  const handleUpdateCustomProperties = (element, properties) => {
+    if (bpmnModelerInstance.current && element) {
+      const modeling = bpmnModelerInstance.current.get('modeling');
+      const moddle = bpmnModelerInstance.current.get('moddle');
+      const businessObject = element.businessObject;
+
+      // Filter out undefined properties to avoid setting them explicitly as empty strings
+      // or to remove them if they were previously set.
+      const validProperties = {};
+      for (const key in properties) {
+        if (properties[key] !== undefined) {
+          validProperties[key] = properties[key];
+        } else {
+          // If property is undefined, we want to remove it from businessObject
+          // For Moddle, setting a property to undefined removes it.
+          validProperties[key] = undefined;
+        }
+      }
+      
+      console.log("Updating BO with:", validProperties);
+
+      modeling.updateModdleProperties(element, businessObject, validProperties);
+      // Note: updateModdleProperties directly modifies the businessObject.
+      // The 'element.changed' event should be triggered by bpmn-js,
+      // which will then update the selectedElement state and re-render the panel.
+    }
+  };
+
   // Example function to save the diagram (you can trigger this via a button)
   // const saveDiagram = async () => {
   //   if (bpmnModelerInstance.current) {
@@ -129,8 +164,10 @@ const BpmnModelerComponent = () => {
     <div style={containerStyle}>
       {error && <div style={{ color: 'red', padding: '10px', position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: 'lightpink', zIndex: 100 }}>Error: {error}</div>}
       <div ref={modelerRef} style={modelerContainerStyle}></div>
-      {/* Render our new custom properties panel */}
-      <CustomBpmnPropertiesPanel selectedElement={selectedElement} />
+      <CustomBpmnPropertiesPanel
+        selectedElement={selectedElement}
+        onUpdateCustomProperties={handleUpdateCustomProperties}
+      />
       {/* Example Save Button:
       <button onClick={saveDiagram} style={{ margin: '10px', padding: '8px 15px' }}>
         Save BPMN Diagram
