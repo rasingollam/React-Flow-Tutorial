@@ -270,11 +270,11 @@ const BpmnModelerComponent = () => {
         onClick={triggerFileImport} 
         style={{ position: 'absolute', top: '10px', right: '400px', zIndex: 10, padding: '8px 15px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
       >
-        Import Diagram & Attributes
+        Import Diagram
       </button>
       {/* Save Button: */}
       <button onClick={saveDiagram} style={{ position: 'absolute', top: '10px', right: '230px', zIndex: 10, padding: '8px 15px' }}>
-        Save Diagram & Attributes
+        Save Diagram
       </button>
     </div>
   );
