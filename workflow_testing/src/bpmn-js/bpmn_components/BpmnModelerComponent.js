@@ -185,19 +185,25 @@ const BpmnModelerComponent = () => {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
+          // Clear current selection and error before starting import
+          setSelectedElement(null); 
+          setError(null);
+
           const fileContent = e.target.result;
           const importedData = JSON.parse(fileContent);
 
           if (importedData && typeof importedData.bpmnXml === 'string' && typeof importedData.attributeSchemas === 'object') {
-            // Load BPMN XML
+            // Set attribute schemas first
+            setAttributeSchemas(importedData.attributeSchemas);
+            
+            // Then, load BPMN XML
             await bpmnModelerInstance.current.importXML(importedData.bpmnXml);
+            
+            // After import, zoom to fit viewport. Selection remains null.
+            // The user will need to click an element to select it again.
             const canvas = bpmnModelerInstance.current.get('canvas');
             canvas.zoom('fit-viewport');
             
-            // Update attribute schemas
-            setAttributeSchemas(importedData.attributeSchemas);
-            
-            setError(null);
             console.log("Workflow and schemas imported successfully.");
           } else {
             throw new Error("Invalid file format. Expected JSON with bpmnXml and attributeSchemas.");
@@ -205,12 +211,14 @@ const BpmnModelerComponent = () => {
         } catch (err) {
           console.error('Error importing workflow file:', err);
           setError(err.message || 'Failed to import workflow file.');
-          alert(`Error: ${err.message}`);
+          alert(`Error: ${err.message}`); // Provide feedback to the user
         }
       };
       reader.onerror = () => {
-        setError('Failed to read the imported file.');
-        alert('Error: Failed to read the imported file.');
+        const importError = 'Failed to read the imported file.';
+        console.error(importError);
+        setError(importError);
+        alert(`Error: ${importError}`);
       };
       reader.readAsText(file);
     }
