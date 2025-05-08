@@ -48,35 +48,75 @@ const buttonStyle = {
   marginTop: '10px',
 };
 
-const CustomBpmnPropertiesPanel = ({ selectedElement, onUpdateCustomProperties }) => {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [status, setStatus] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
+// Helper to get a default value based on type, useful for initialization
+const getDefaultValueForType = (type) => {
+  switch (type) {
+    case 'text': // Changed from 'string' to 'text' for consistency
+    case 'url':  // Added url to default to empty string
+    case 'date':
+      return '';
+    case 'number':
+      return ''; // Default number to empty string for input, parse on change/save
+    case 'boolean':
+      return false;
+    default:
+      return '';
+  }
+};
+
+const CustomBpmnPropertiesPanel = ({ selectedElement, attributeSchemas, onUpdateCustomProperties }) => {
+  const [customFieldValues, setCustomFieldValues] = useState({});
+  const [currentSchema, setCurrentSchema] = useState([]);
 
   useEffect(() => {
-    if (selectedElement && selectedElement.businessObject) {
+    if (selectedElement && selectedElement.businessObject && attributeSchemas) {
       const bo = selectedElement.businessObject;
-      setStartDate(bo.get('startDate') || '');
-      setEndDate(bo.get('endDate') || '');
-      setStatus(bo.get('status') || '');
-      setAssignedTo(bo.get('assignedTo') || '');
+      const elementType = bo.$type;
+      const schemaForElement = attributeSchemas[elementType] || [];
+      setCurrentSchema(schemaForElement);
+
+      const initialValues = {};
+      schemaForElement.forEach(attrDef => {
+        const existingValue = bo.get(attrDef.name);
+        if (attrDef.type === 'boolean') {
+          initialValues[attrDef.name] = existingValue !== undefined ? !!existingValue : getDefaultValueForType(attrDef.type);
+        } else {
+          initialValues[attrDef.name] = existingValue !== undefined ? existingValue : getDefaultValueForType(attrDef.type);
+        }
+      });
+      setCustomFieldValues(initialValues);
+
     } else {
-      setStartDate('');
-      setEndDate('');
-      setStatus('');
-      setAssignedTo('');
+      setCurrentSchema([]);
+      setCustomFieldValues({});
     }
-  }, [selectedElement]);
+  }, [selectedElement, attributeSchemas]);
+
+  const handleCustomFieldChange = (fieldName, value, type) => {
+    setCustomFieldValues(prevValues => ({
+      ...prevValues,
+      // For boolean, the value is already e.target.checked (true/false)
+      // For number, store as string from input, parse on apply
+      [fieldName]: value,
+    }));
+  };
 
   const handleApplyCustomProperties = () => {
-    if (selectedElement && onUpdateCustomProperties) {
-      const propertiesToUpdate = {
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        status: status || undefined,
-        assignedTo: assignedTo || undefined,
-      };
+    if (selectedElement && onUpdateCustomProperties && currentSchema.length > 0) {
+      const propertiesToUpdate = {};
+      currentSchema.forEach(attrDef => {
+        let value = customFieldValues[attrDef.name];
+
+        if (attrDef.type === 'number') {
+          const numValue = parseFloat(value);
+          value = isNaN(numValue) ? undefined : numValue;
+        } else if (attrDef.type === 'boolean') {
+          value = !!value; // Ensure it's a boolean
+        } else if (value === '' && (attrDef.type === 'text' || attrDef.type === 'date' || attrDef.type === 'url')) {
+          value = undefined; // Set to undefined to remove attribute if empty string
+        }
+        propertiesToUpdate[attrDef.name] = value;
+      });
       onUpdateCustomProperties(selectedElement, propertiesToUpdate);
     }
   };
@@ -90,7 +130,6 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, onUpdateCustomProperties }
   }
 
   const { businessObject } = selectedElement;
-  const isTask = businessObject.$type === 'bpmn:Task' || businessObject.$type === 'bpmn:UserTask';
 
   const excludeProperties = ['$type', 'extensionElements', 'di', '$parent', 'flowElements', 'artifacts', 'lanes', 'participants'];
 
@@ -98,51 +137,39 @@ const CustomBpmnPropertiesPanel = ({ selectedElement, onUpdateCustomProperties }
     <div style={panelStyle}>
       <h3>Properties for: {businessObject.id || businessObject.name || businessObject.$type}</h3>
 
-      {isTask && (
+      {/* Dynamically Rendered Custom Fields Section */}
+      {/* The conditional rendering is now based on currentSchema.length > 0 */}
+      {currentSchema.length > 0 && (
         <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #ddd' }}>
-          <h4>Custom Task Attributes</h4>
-          <div>
-            <label htmlFor="startDate" style={labelStyle}>Start Date:</label>
-            <input
-              id="startDate"
-              type="date"
-              style={inputStyle}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="endDate" style={labelStyle}>End Date:</label>
-            <input
-              id="endDate"
-              type="date"
-              style={inputStyle}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="status" style={labelStyle}>Status:</label>
-            <input
-              id="status"
-              type="text"
-              style={inputStyle}
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              placeholder="e.g., Pending, In Progress"
-            />
-          </div>
-          <div>
-            <label htmlFor="assignedTo" style={labelStyle}>Assigned To:</label>
-            <input
-              id="assignedTo"
-              type="text"
-              style={inputStyle}
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              placeholder="e.g., John Doe"
-            />
-          </div>
+          {/* Dynamic heading based on the element type */}
+          <h4>Custom Attributes for {businessObject.$type}</h4>
+          {currentSchema.map((attrDef) => (
+            <div key={attrDef.name} style={{ marginBottom: '12px' }}>
+              <label htmlFor={attrDef.name} style={labelStyle}>{attrDef.label}:</label>
+              {attrDef.type === 'boolean' ? (
+                <input
+                  id={attrDef.name}
+                  type="checkbox"
+                  style={{ marginLeft: '5px', verticalAlign: 'middle' }}
+                  checked={!!customFieldValues[attrDef.name]} // Ensure it's a boolean for checked prop
+                  onChange={(e) => handleCustomFieldChange(attrDef.name, e.target.checked, 'boolean')}
+                />
+              ) : (
+                <input
+                  id={attrDef.name}
+                  type={attrDef.type === 'url' ? 'text' : attrDef.type} // HTML input types (date, number, text)
+                  style={inputStyle}
+                  value={customFieldValues[attrDef.name] === undefined ? '' : String(customFieldValues[attrDef.name])}
+                  onChange={(e) => handleCustomFieldChange(attrDef.name, e.target.value, attrDef.type)}
+                  placeholder={attrDef.placeholder || ''}
+                  // For number inputs, min/max/step are fine if type="number"
+                  min={attrDef.type === 'number' ? attrDef.min : undefined}
+                  max={attrDef.type === 'number' ? attrDef.max : undefined}
+                  step={attrDef.type === 'number' ? attrDef.step : undefined}
+                />
+              )}
+            </div>
+          ))}
           <button style={buttonStyle} onClick={handleApplyCustomProperties}>
             Apply Custom Attributes
           </button>

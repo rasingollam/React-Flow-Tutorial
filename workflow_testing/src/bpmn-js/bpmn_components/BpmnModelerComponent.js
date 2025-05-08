@@ -3,6 +3,7 @@ import BpmnJS from 'bpmn-js/lib/Modeler';
 
 // Import our new custom properties panel
 import CustomBpmnPropertiesPanel from './CustomBpmnPropertiesPanel'; // Import the new panel
+import SchemaDefinitionModal from './SchemaDefinitionModal'; // Import the modal
 
 // Import BPMN-JS CSS files
 import 'bpmn-js/dist/assets/diagram-js.css';
@@ -34,18 +35,32 @@ const containerStyle = { // Style for the overall container including properties
 const modelerContainerStyle = { // Style for the diagram canvas
   flexGrow: 1, // Canvas takes available space
   height: '100%',
-  // borderRight: '1px solid #ccc', // No longer needed if panel is separate or styled differently
   backgroundColor: '#fff',
+  position: 'relative', // Needed for positioning the button
 };
 
-// propertiesPanelContainerStyle is no longer needed as we have a new custom panel component
+const defineAttrsButtonStyle = {
+  position: 'absolute',
+  top: '10px',
+  right: '10px', // Adjust as needed, ensure it doesn't overlap save button if that's also absolute
+  zIndex: 20, // Ensure it's above the canvas
+  padding: '8px 15px',
+  backgroundColor: '#28a745',
+  color: 'white',
+  border: 'none',
+  borderRadius: '4px',
+  cursor: 'pointer',
+};
 
 const BpmnModelerComponent = () => {
   const modelerRef = useRef(null);
-  // propertiesPanelRef is no longer needed
   const bpmnModelerInstance = useRef(null);
   const [error, setError] = useState(null);
-  const [selectedElement, setSelectedElement] = useState(null); // State for the selected element
+  const [selectedElement, setSelectedElement] = useState(null);
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false); // State for modal
+
+  // Define schemas for custom attributes - initially empty, user defines via modal
+  const [attributeSchemas, setAttributeSchemas] = useState({});
 
   useEffect(() => {
     if (!modelerRef.current) {
@@ -55,14 +70,6 @@ const BpmnModelerComponent = () => {
     // Initialize BpmnJS modeler
     bpmnModelerInstance.current = new BpmnJS({
       container: modelerRef.current,
-      // propertiesPanel: { // This configuration is removed
-      //   parent: propertiesPanelRef.current
-      // },
-      // additionalModules: [ // These are removed as we are not using the default properties panel
-      //   BpmnPropertiesPanelModule,
-      //   BpmnPropertiesProviderModule,
-      //   { __init__: ['customPropertiesProvider'], customPropertiesProvider: ['type', CustomPropertiesProvider] }
-      // ],
       keyboard: {
         bindTo: window
       }
@@ -141,38 +148,57 @@ const BpmnModelerComponent = () => {
     }
   };
 
-  // Example function to save the diagram (you can trigger this via a button)
-  // const saveDiagram = async () => {
-  //   if (bpmnModelerInstance.current) {
-  //     try {
-  //       const { xml } = await bpmnModelerInstance.current.saveXML({ format: true });
-  //       console.log('Saved BPMN XML:', xml);
-  //       // Here you can trigger a download or send to a server
-  //       const encodedData = encodeURIComponent(xml);
-  //       const link = document.createElement('a');
-  //       link.setAttribute('href', 'data:application/bpmn20-xml;charset=UTF-8,' + encodedData);
-  //       link.setAttribute('download', 'diagram.bpmn');
-  //       link.click();
-  //     } catch (err) {
-  //       console.error('Error saving BPMN XML:', err);
-  //       setError(err.message || 'Failed to save BPMN diagram.');
-  //     }
-  //   }
-  // };
+  const handleSaveSchemas = (newSchemas) => {
+    setAttributeSchemas(newSchemas);
+    // Optional: Save newSchemas to localStorage or backend here
+    console.log("Custom attribute schemas updated:", newSchemas);
+  };
+
+  const saveDiagram = async () => {
+    if (bpmnModelerInstance.current) {
+      try {
+        const { xml } = await bpmnModelerInstance.current.saveXML({ format: true });
+        console.log('Saved BPMN XML:', xml);
+        // Here you can trigger a download or send to a server
+        const encodedData = encodeURIComponent(xml);
+        const link = document.createElement('a');
+        link.setAttribute('href', 'data:application/bpmn20-xml;charset=UTF-8,' + encodedData);
+        link.setAttribute('download', 'diagram.bpmn');
+        link.click();
+      } catch (err) {
+        console.error('Error saving BPMN XML:', err);
+        setError(err.message || 'Failed to save BPMN diagram.');
+      }
+    }
+  };
 
   return (
     <div style={containerStyle}>
       {error && <div style={{ color: 'red', padding: '10px', position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: 'lightpink', zIndex: 100 }}>Error: {error}</div>}
-      <div ref={modelerRef} style={modelerContainerStyle}></div>
+      <div ref={modelerRef} style={modelerContainerStyle}>
+        {/* Button to open schema definition modal */}
+        <button 
+          style={defineAttrsButtonStyle} 
+          onClick={() => setIsSchemaModalOpen(true)}
+        >
+          Define Custom Attributes
+        </button>
+      </div>
       <CustomBpmnPropertiesPanel
         selectedElement={selectedElement}
+        attributeSchemas={attributeSchemas}
         onUpdateCustomProperties={handleUpdateCustomProperties}
       />
-      {/* Example Save Button:
-      <button onClick={saveDiagram} style={{ margin: '10px', padding: '8px 15px' }}>
+      <SchemaDefinitionModal
+        isOpen={isSchemaModalOpen}
+        onClose={() => setIsSchemaModalOpen(false)}
+        currentSchemas={attributeSchemas}
+        onSaveSchemas={handleSaveSchemas}
+      />
+      {/* Example Save Button: */}
+      <button onClick={saveDiagram} style={{ position: 'absolute', top: '10px', right: '230px', zIndex: 10, padding: '8px 15px' }}> {/* Adjusted right position */}
         Save BPMN Diagram
       </button>
-      */}
     </div>
   );
 };
